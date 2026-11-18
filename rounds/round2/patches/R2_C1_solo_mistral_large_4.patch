@@ -1,0 +1,142 @@
+diff --git a/scripts/fixtures/nuri_delegated_vtxo.json b/scripts/fixtures/nuri_delegated_vtxo.json
+new file mode 100644
+index 0000000..1fa3c5c
+--- /dev/null
++++ b/scripts/fixtures/nuri_delegated_vtxo.json
+@@ -0,0 +1,99 @@
++{
++  "formatVersion": 1,
++  "contractName": "NuriDelegatedVtxo",
++  "constructorInputs": [
++    { "name": "owner", "type": "pubkey" },
++    { "name": "clientRecoveryKey", "type": "pubkey" },
++    { "name": "exitDelay", "type": "int" },
++    { "name": "clientRecoveryDelay", "type": "int" },
++    { "name": "renewalWindow", "type": "int" },
++    { "name": "maxFee", "type": "int" }
++  ],
++  "structs": [],
++  "functions": [
++    {
++      "name": "forfeit",
++      "leaves": [
++        {
++          "name": "forfeit",
++          "asm": ["<owner>", "OP_CHECKSIGVERIFY", "<SERVER_KEY>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "ownerSig", "type": "signature", "encoding": "schnorr-64" },
++            { "name": "serverSig", "type": "signature", "encoding": "schnorr-64", "injected": true }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "exit",
++      "leaves": [
++        {
++          "name": "exit",
++          "asm": ["<exitDelay>", "OP_CHECKSEQUENCEVERIFY", "OP_DROP", "<owner>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "ownerSig", "type": "signature", "encoding": "schnorr-64" }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "clientRecovery",
++      "leaves": [
++        {
++          "name": "clientRecovery",
++          "asm": ["<clientRecoveryDelay>", "OP_CHECKSEQUENCEVERIFY", "OP_DROP", "<clientRecoveryKey>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "clientSig", "type": "signature", "encoding": "schnorr-64" }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "renew",
++      "arkade": {
++        "inputs": [
++          { "name": "intent_type", "type": "bytes" },
++          { "name": "onchain_output_indexes", "type": "bytes" }
++        ],
++        "asm": [
++          "OP_PUSHEXPIRY",
++          "<renewalWindow>",
++          "OP_SUB",
++          "OP_CHECKTIME",
++          "OP_VERIFY",
++          "<intent_type>",
++          "0x7265676973746572",
++          "OP_EQUAL",
++          "OP_VERIFY",
++          "<onchain_output_indexes>",
++          "0x5b5d",
++          "OP_EQUAL",
++          "OP_VERIFY",
++          "0",
++          "OP_INSPECTOUTPUTVALUE",
++          "<maxFee>",
++          "OP_ADD",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_INSPECTINPUTVALUE",
++          "OP_GREATERTHANOREQUAL",
++          "OP_VERIFY",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_1SUB",
++          "5",
++          "0",
++          "OP_TUNNEL"
++        ]
++      },
++      "leaves": [
++        {
++          "name": "renew",
++          "asm": ["<SERVER_KEY>", "OP_CHECKSIGVERIFY", "<EMULATOR_KEY:renew>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "serverSig", "type": "signature", "encoding": "schnorr-64", "injected": true },
++            { "name": "emulatorSig", "type": "signature", "encoding": "schnorr-64", "injected": true }
++          ]
++        }
++      ]
++    }
++  ]
++}
+diff --git a/scripts/fixtures/nuri_renew.json b/scripts/fixtures/nuri_renew.json
+new file mode 100644
+index 0000000..e4bea97
+--- /dev/null
++++ b/scripts/fixtures/nuri_renew.json
+@@ -0,0 +1,31 @@
++{
++  "format": "template/v1",
++  "type": "proof",
++  "artifact": "58d85f06b824cdb73b14242c05d26b2130c1bb055a32befa0b1216682880ad1a",
++  "variables": {
++    "owner": "pubkey",
++    "client_recovery_key": "pubkey",
++    "exit_delay": "int",
++    "client_recovery_delay": "int",
++    "renewal_window": "int",
++    "max_fee": "int"
++  },
++  "spend": {
++    "function": "renew",
++    "leaf": "renew"
++  },
++  "outputs": [
++    {
++      "name": "renewed",
++      "value": { "from": "funds" },
++      "locking": { "from": "funds" },
++      "assets": [{ "from": "funds" }]
++    }
++  ],
++  "fees": { "from": "funds", "max": "<max_fee>" },
++  "delegation": {
++    "schedule": {
++      "funds": { "before_expiry_seconds": "<renewal_window>" }
++    }
++  }
++}

@@ -1,0 +1,108 @@
+```json
+{
+  "scores": {
+    "CANDIDATE_A": {
+      "correctness_25": 0,
+      "security_25": 0,
+      "craft_brevity_25": 1,
+      "tests_docs_25": 0,
+      "total_100": 1,
+      "key_strengths": "No regression to existing server (G6 only).",
+      "flaws_found": "Empty diff: no fixtures, client, routes, tests or docs. 1/7 gates."
+    },
+    "CANDIDATE_B": {
+      "correctness_25": 8,
+      "security_25": 9,
+      "craft_brevity_25": 9,
+      "tests_docs_25": 11,
+      "total_100": 37,
+      "key_strengths": "Correct config names; client pins the configured template; timeout/network/5xx classified as outcome unknown (G4); own tests pass; docs describe binding and the IDOR guard.",
+      "flaws_found": "Artifact uses an invented schema (string constructorInputs, script/signatures/covenant objects instead of leaves/asm/witness/arkade), so it does not compile. Template lacks inputs/contract and puts artifact at top level. encodeCsvSequenceHex does not divide seconds by 512 and caps seconds at 65535, so the BIP-68 encoding is wrong. Variable validation rejects empty hex, which is the encoding of 0. Raw upstream body is kept on error.body unredacted; no redirect:\"error\" and no 7081/admin guard. Long confused comment block left in the CSV helper. G2, G3, G5 failed."
+    },
+    "CANDIDATE_C": {
+      "correctness_25": 11,
+      "security_25": 16,
+      "craft_brevity_25": 13,
+      "tests_docs_25": 9,
+      "total_100": 49,
+      "key_strengths": "Passed the live HTTP auth/IDOR gate (G5): owner and client_recovery_key are derived server-side, mismatches return 403, and status re-checks template/owner/recovery key. ScriptNum, CSV and JCS helpers are compact and correct in the visible code. Uncertain outcomes handled (G4). Docs are crisp.",
+      "flaws_found": "Own test suite fails (G1). Fixtures are minified and use non-standard placeholders ($owner, bare SERVER_KEY), invented arkade inputs, and omit the OP_INSPECTINTENTMESSAGE checks. Template has a top-level artifact and 'spends' with no inputs/contract. getDelegation requires hex for id/address, which breaks bech32m address lookup. Variable validation rejects empty hex (0). No redirect:\"error\" and no 7081/admin config guard. Deterministic 409 is surfaced as 502. G2, G3 failed."
+    },
+    "CANDIDATE_D": {
+      "correctness_25": 6,
+      "security_25": 5,
+      "craft_brevity_25": 6,
+      "tests_docs_25": 8,
+      "total_100": 25,
+      "key_strengths": "Artifact functions, leaves and asm match the gold layout almost exactly. Own tests pass; docs mention the 7081 boundary.",
+      "flaws_found": "Wrong contract throughout: config is EXECUTOR_URL_V4 plus an EXECUTOR_API_KEY_V4 bearer secret; client calls /v1/delegations and /v1/delegations/{id}/status with an Idempotency-Key header. encodeScriptNumHex, encodeCsvSequenceHex and computeJcsSha256Hex are not exported. Artifact carries a _meta block that changes its content ID. Template artifact ID is a garbage string containing a space, and the variable is named clientRecoveryKey. 409 is treated as unknown outcome. Binding checks cred_id/client_signer_pubkey rather than the derived aggregate owner. Tests use mocks and file-content checks, not live HTTP. G2, G3, G4, G5 failed."
+    },
+    "CANDIDATE_E": {
+      "correctness_25": 12,
+      "security_25": 13,
+      "craft_brevity_25": 13,
+      "tests_docs_25": 7,
+      "total_100": 45,
+      "key_strengths": "Config and client both refuse port 7081 and /v1/admin|artifact|template paths, and validate the 64-hex template ID. ScriptNum, CSV and JCS helpers are correct. Only the register POST is marked uncertain on failure; 409 maps to EXECUTOR_DELEGATION_BLOCKED. Secret-named variables are refused and error text redacted. Docs are thorough on the trust boundary.",
+      "flaws_found": "Own tests fail (G1) and the live HTTP security gate fails (G5). Artifact uses 'script' instead of 'asm', an invented covenant object, wrong witness typing and an extra format field, so it does not compile. Template has a top-level artifact and no inputs/contract. Status default relies on a 'last registered' record rather than a derived lookup. No redirect:\"error\". G2, G3 failed."
+    },
+    "CANDIDATE_F": {
+      "correctness_25": 5,
+      "security_25": 0,
+      "craft_brevity_25": 2,
+      "tests_docs_25": 0,
+      "total_100": 7,
+      "key_strengths": "Artifact leaves, asm and witness layout for forfeit/exit/clientRecovery/renew are close to the gold.",
+      "flaws_found": "Fixtures only: no client, config, routes, tests or docs. Artifact adds formatVersion and invented arkade inputs in place of OP_INSPECTINTENTMESSAGE. Template lacks inputs/contract and uses a top-level artifact. 1/7 gates."
+    },
+    "CANDIDATE_G": {
+      "correctness_25": 0,
+      "security_25": 0,
+      "craft_brevity_25": 1,
+      "tests_docs_25": 0,
+      "total_100": 1,
+      "key_strengths": "No regression to existing server (G6 only).",
+      "flaws_found": "Empty diff: nothing delivered. 1/7 gates."
+    },
+    "CANDIDATE_H": {
+      "correctness_25": 13,
+      "security_25": 14,
+      "craft_brevity_25": 14,
+      "tests_docs_25": 13,
+      "total_100": 54,
+      "key_strengths": "Clean, compact client with correct ScriptNum/CSV (BigInt, 512 trap, bit 22) and strict JCS. Sets redirect:\"error\". Executor-controlled text is kept out of error.message. Timeout/network/5xx classified as outcome unknown (G4). Own tests pass and include a live HTTP harness. Docs are concise and cover binding, IDOR and the admin boundary.",
+      "flaws_found": "Live HTTP security gate failed (G5). Artifact adds formatVersion, and the renew asm uses length-prefixed pushes, wrong ordering and an invented intent input, so it does not compile. Template uses 'spending' and a top-level artifact with no inputs/contract. Deterministic 400/409 are surfaced as 502 instead of 409. 429 is treated as unknown outcome. Variable regex rejects empty hex (0). Touched ArkadeDerive.js to add a pub33 alias, outside scope. No 7081/admin config guard. G2, G3 failed."
+    },
+    "CANDIDATE_I": {
+      "correctness_25": 0,
+      "security_25": 0,
+      "craft_brevity_25": 1,
+      "tests_docs_25": 0,
+      "total_100": 1,
+      "key_strengths": "No regression to existing server (G6 only).",
+      "flaws_found": "Empty diff: nothing delivered. 1/7 gates."
+    },
+    "CANDIDATE_J": {
+      "correctness_25": 15,
+      "security_25": 14,
+      "craft_brevity_25": 14,
+      "tests_docs_25": 15,
+      "total_100": 58,
+      "key_strengths": "Best gate result (5/7), the only candidate to pass the encoding/JCS invariants gate (G3). Artifact uses the proper leaves/asm/witness schema. Template has the correct inputs/contract/arguments/spend structure and an artifact ID. Helpers are correct. Secret-looking variables are refused, 5xx/408/timeout are classified as unknown, and template_id mismatch returns 403. Docs are clear; .env.example updated.",
+      "flaws_found": "Live HTTP security gate failed (G5). Artifact adds unspecified DELEGATE_KEY cosigner checks to the renew covenant, so it does not compile (G2). Template adds a top-level artifact, a per-input schedule and an output index beyond the spec. POST body uses camelCase templateId/expiresAt instead of template_id/expires_at. Every deterministic 4xx is labelled ErrBlocked. normalizeDelegation self-reference hack and loose cfg aliases are bloat. No redirect:\"error\" and no 7081/admin config guard. Variable regex rejects empty hex (0)."
+    }
+  },
+  "ranking": [
+    "CANDIDATE_J",
+    "CANDIDATE_H",
+    "CANDIDATE_C",
+    "CANDIDATE_E",
+    "CANDIDATE_B",
+    "CANDIDATE_D",
+    "CANDIDATE_F",
+    "CANDIDATE_A",
+    "CANDIDATE_G",
+    "CANDIDATE_I"
+  ]
+}
+```

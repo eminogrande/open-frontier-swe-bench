@@ -1,0 +1,30 @@
+{
+  "id": "R2_C2_solo_qwen3_8_2_4t",
+  "label": "Solo Open-Weight Flagship: qwen/qwen3.8-2.4t-a95b (2.4T/95B)",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 243.41,
+  "total_tokens": 759359,
+  "output_tokens": 5414,
+  "reasoning_tokens": 2145,
+  "total_turns": 22,
+  "total_tool_calls": 32,
+  "added_loc": 0,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "qwen/qwen3.8-2.4t-a95b",
+      "rc": 0,
+      "elapsed_s": 243.39,
+      "turns": 22,
+      "tool_calls": 32,
+      "total_tokens": 759359,
+      "input_tokens": 753945,
+      "output_tokens": 5414,
+      "reasoning_tokens": 2145,
+      "text": "",
+      "stderr": "",
+      "stage": "solo_worker"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "R2_C5_solo_deepseek_v4_pro",
+  "label": "Solo Open-Weight Flagship: deepseek/deepseek-v4-pro-0813 (1.6T)",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 600.11,
+  "total_tokens": 2382680,
+  "output_tokens": 12382,
+  "reasoning_tokens": 7034,
+  "total_turns": 54,
+  "total_tool_calls": 57,
+  "added_loc": 0,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "deepseek/deepseek-v4-pro-0813",
+      "rc": -1,
+      "elapsed_s": 600.04,
+      "turns": 54,
+      "tool_calls": 57,
+      "total_tokens": 2382680,
+      "input_tokens": 2370298,
+      "output_tokens": 12382,
+      "reasoning_tokens": 7034,
+      "text": "\n\n",
+      "stderr": "TIMEOUT after 600s",
+      "stage": "solo_worker"
+    }
+  ]
+}

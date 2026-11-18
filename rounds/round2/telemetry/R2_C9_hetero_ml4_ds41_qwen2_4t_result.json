@@ -1,0 +1,58 @@
+{
+  "id": "R2_C9_hetero_ml4_ds41_qwen2_4t",
+  "label": "Hetero Open-Frontier C: Planner mistral-large-4-0 -> Worker deepseek-v4.1-flash-1017 -> Reviewer qwen3.8-2.4t-a95b -> Orch deepseek-v4.1-flash-1017",
+  "open_weights": true,
+  "mode": "pipeline",
+  "wall_s": 750.4,
+  "total_tokens": 2815486,
+  "output_tokens": 44435,
+  "reasoning_tokens": 20717,
+  "total_turns": 61,
+  "total_tool_calls": 74,
+  "added_loc": 1158,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": 0,
+      "elapsed_s": 57.11,
+      "turns": 9,
+      "tool_calls": 14,
+      "total_tokens": 105827,
+      "input_tokens": 103554,
+      "output_tokens": 2273,
+      "reasoning_tokens": 377,
+      "text": "# Implementation Blueprint \u2014 Issue #172 Server Slice (Planner only, no edits)\n\n## 1. Fixtures (new files)\n- `scripts/fixtures/nuri_delegated_vtxo.json` \u2014 artifact v1, `contractName: \"NuriDelegatedVtxo\"`, 6 `constructorInputs`, `structs: []`, 4 leaves per spec (`forfeit`/`exit`/`clientRecovery`/`renew`); `renew` uses `OP_PUSHEXPIRY <renewalWindow> OP_SUB OP_CHECKTIME OP_VERIFY`, `OP_PUSHCURRENTINPUTINDEX OP_1SUB 5 0 OP_TUNNEL`, both sigs `injected: true`.\n- `scripts/fixtures/nuri_renew.json` \u2014 `template/v1` proof template; `artifact` field = JCS SHA-256 hex of the exact artifact file bytes (canonicalized per RFC-8785), `function/leaf: \"renew\"`, single `renewed` output from funds, `fees.max: \"<max_fee>\"`, `delegation.schedule.funds.before_expiry_seconds: \"<renewal_window>\"`.\n\n## 2. `src/ArkadeExecutorClient.js` (new)\n- `encodeScriptNumHex(n)`: BigInt \u2192 minimal little-endian CScriptNum; `0n\u2192\"\"`; sign bit = MSB of last byte; negative \u2192 two's complement.\n- `encodeCsvSequenceHex({type,value})`: seconds require `value % 512 === 0` and type flag `1<<22`; mask to 16 bits (`& 0xffff` after setting flag); reject non-multiple-of-512 seconds and out-of-range \u2192 BIP-68 trap.\n- `computeJcsSha256Hex(doc)`: RFC-8785 canonicalization (sorted keys, no whitespace, UTF-8) + `crypto.createHash(\"sha256\")`.\n- `createArkadeExecutorClient({cfg, fetchImpl=fetch})`: reads new cfg fields; `enabled = !!(URL && TEMPLATE_ID)`; only `GET /v1/info`, `POST /v1/delegation`, `GET /v1/delegation?id=|?address=` \u2014 never `/v1/admin/*`, 7081, `/v1/artifact`, `/v1/template`. `AbortController` timeout (default 10000ms); network/timeout/5xx \u2192 `error.code=\"EXECUTOR_OUTCOME_UNKNOWN\"`, `outcomeUnknown=true`; 400/409 \u2192 deterministic `ErrBlocked`; all variable values validated `/^[0-9a-f]+$/`; redact secret-ish keys (`token|secret|seed|key|priv`) from logs/errors; idempotent re-POST returns active delegation.\n\n## 3. `src/ArkadeConfig.js` (edit)\n- After line ~466 (near delegate worker block, ~line 468): add `ARKADE_EXECUTOR_URL_V4`/`ARKADE_EXECUTOR_TEMPLATE_ID_V4` via `parseStringEnv(..., \"\")`, `ARKADE_EXECUTOR_TIMEOUT_MS_V4` via `parseIntEnv(..., 10000)`; export in returned object (~line 539). Do NOT touch `DELEGATE_WORKER_ENABLED_V4` (stays `false`, line 468) or re-add `/v1/delegate`. Add matching commented lines to `.env.example` after line 102.\n\n## 4. `src/ArkadeServer.js` (edits)\n- Reuse: `verifyRequestAuth(body, cfg)` (line 2440, rejects purpose-scoped tokens via `token.p` check), `getClientSignerFromToken(token)` (line 4196), `getDerivedServerPublicKey(cfg, clientPk33)` (line 2768, returns `.pub`), `deriveAggregatedPk33(clientPk33, derived.pub)` (line 288). Pattern: `parseJson` (231) \u2192 `verifyRequestAuth` \u2192 401 on throw \u2192 `json(res, status, withVersionMatrix(cfg, {...}))` (163/212); `logOp`+`truncate` (120/127) for logs.\n- New handlers `handleExecutorDelegationRegister` / `handleExecutorDelegationStatus`: derive `clientPk33` \u2192 `derived.pub33` \u2192 `owner = deriveAggregatedPk33(...)`, `client_recovery_key = clientPk33`; if body supplies `owner`/`client_recovery_key` and \u2260 derived \u2192 `403`; always overwrite `variables.owner`/`variables.client_recovery_key` with derived values. Status: fetch by `id`/`address`, then verify `delegation.template_id === cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4 && variables.owner === owner && variables.client_recovery_key === clientPk33` else `403` (IDOR guard). 503 if executor unconfigured; 504/502 + `outcome_unknown:true` on `EXECUTOR_OUTCOME_UNKNOWN`.\n- Wire routes in the dispatcher before the 404 (~line 6170): `POST /arkade/executor/delegation/register` and `.../status`, lazy-constructing the client in `startArkadeServer` (~line 6037 area) and attaching to `server.arkade`.\n\n## 5. `ENDPOINTS.md` (edit)\n- New \"## Executor Delegation\" section after Push Notifications: both routes, WebAuthn request-auth, wallet-bound `owner`/`client_recovery_key` (never caller-supplied), status ownership check, 503/504/403 semantics, executor gateway is public `ExecutorService` only \u2014 no admin/artifact/template routes.\n\n## 6. `src/ArkadeExecutorClient.test.js` (new)\n- `node --test`: unit tests for both encoders (incl. `seconds` not divisible by 512 \u2192 throw; e.g. `{type:\"seconds\",value:512}` \u2192 `0x00020040`-style sequence via flag bit 22), JCS hash of fixture files + template's `artifact` ID match + 4 leaves present, idempotent register, timeout \u2192 `outcomeUnknown`, 409 `ErrBlocked`, redaction; live HTTP tests via `startArkadeServer`-style harness + stub executord: 401 unauth/purpose token, 403 cross-wallet `owner` spoof, 403 IDOR status by foreign `id`, happy-path register+status roundtrip.",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "deepseek/deepseek-v4.1-flash-1017",
+      "rc": -1,
+      "elapsed_s": 540.03,
+      "turns": 51,
+      "tool_calls": 60,
+      "total_tokens": 2686144,
+      "input_tokens": 2651555,
+      "output_tokens": 34589,
+      "reasoning_tokens": 12776,
+      "text": "",
+      "stderr": "TIMEOUT after 540s",
+      "stage": "worker"
+    },
+    {
+      "model": "qwen/qwen3.8-2.4t-a95b",
+      "rc": 0,
+      "elapsed_s": 152.83,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 23515,
+      "input_tokens": 15942,
+      "output_tokens": 7573,
+      "reasoning_tokens": 7564,
+      "text": "APPROVED_NO_FIXES",
+      "stderr": "",
+      "stage": "reviewer"
+    }
+  ]
+}

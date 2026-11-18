@@ -1,0 +1,72 @@
+{
+  "id": "R2_C10_hetero_dsv4pro_devstral_glm53",
+  "label": "Hetero Open-Frontier D: Planner deepseek-v4-pro-0813 -> Worker devstral-2512 -> Reviewer glm-5.3-prime -> Orch devstral-2512",
+  "open_weights": true,
+  "mode": "pipeline",
+  "wall_s": 1055.15,
+  "total_tokens": 6712608,
+  "output_tokens": 46392,
+  "reasoning_tokens": 5231,
+  "total_turns": 120,
+  "total_tool_calls": 137,
+  "added_loc": 1118,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "model": "deepseek/deepseek-v4-pro-0813",
+      "rc": 0,
+      "elapsed_s": 113.8,
+      "turns": 13,
+      "tool_calls": 17,
+      "total_tokens": 264764,
+      "input_tokens": 260331,
+      "output_tokens": 4433,
+      "reasoning_tokens": 1526,
+      "text": "Blueprint (<350 words):\n\n## 1. Fixtures\n- New `scripts/fixtures/nuri_delegated_vtxo.json`: artifact v1, `contractName:\"NuriDelegatedVtxo\"`, `constructorInputs` = 6 fields, `structs:[]`; 4 leaves exactly as specced (`forfeit`,`exit`,`clientRecovery`,`renew`), injected flags on serverSig/clientSig/renew sigs only.\n- New `scripts/fixtures/nuri_renew.json`: `format:\"template/v1\"`, `type:\"proof\"`, 6 vars, `artifact` = `computeJcsSha256Hex(nuri_delegated_vtxo_obj)`; spend `renew`,`renew`; single `renewed` output, `fees.max:<max_fee>`, `delegation.schedule.before_expiry_seconds:<renewal_window>`.\n\n## 2. `src/ArkadeExecutorClient.js` (new)\n- Import `sha256` from `ArkadeCrypto.js`.\n- `encodeScriptNumHex(n)`: minimal LE sign-bit (`0n\u2192\"\"`; positive add `0x00` byte if high bit set; negative = 1-byte absolute value encoded, else `(+n)+0x80`).\n- `encodeCsvSequenceHex({type,value})`: 0..65535 mask; `seconds` must be `%512===0`; use `value<<22`, encode via `encodeScriptNumHex`.\n- `computeJcsSha256Hex(doc)`: RFC-8785 canonical (`JSON.stringify` ordered, no undefined), `sha256().toString(\"hex\")`.\n- `createArkadeExecutorClient({cfg,fetchImpl=fetch})`: `enabled=false` unless `ARKADE_EXECUTOR_URL_V4`+`ARKADE_EXECUTOR_TEMPLATE_ID_V4`; timeout from `ARKADE_EXECUTOR_TIMEOUT_MS_V4` (default 10000). Only `GET /v1/info`, `POST /v1/delegation`, `GET /v1/delegation?id|address`. `registerDelegation`: validate lowercase-hex vars; abort timeout; network/timeout/5xx \u2192 `code:\"EXECUTOR_OUTCOME_UNKNOWN\"`, `outcomeUnknown:true`; deterministic 4xx/`409`/`ErrBlocked` normal; idempotent re-register returns active record; `getDelegation`,`getInfo`; redact token/seed/key fields in logs/errors.\n\n## 3. `src/ArkadeConfig.js`\n- After `ARKADE_EMULATOR_URL` parse (~line 357) add `ARKADE_EXECUTOR_URL_V4` (`\"\"`), `ARKADE_EXECUTOR_TEMPLATE_ID_V4` (`\"\"`), `ARKADE_EXECUTOR_TIMEOUT_MS_V4` (`parseIntEnv`, default 10000); return them ~line 508. Never flip `DELEGATE_WORKER_ENABLED_V4` (line 468).\n\n## 4. `src/ArkadeServer.js`\n- Import client (~line 47). Instantiate in `startArkadeServer` (~line 6045); pass to handlers.\n- Add handlers before line 6002; add routes after `/arkade/info` (~line 6102).\n- Reuse: `verifyRequestAuth` (2440), `getClientSignerFromToken` (4196), `getDerivedServerPublicKey` (2768), `deriveAggregatedPk33` (288), `parseJson`, `json`, `logOp`/`truncate`.\n- Register: `clientPk33` \u2192 `derived` \u2192 `owner=deriveAggregatedPk33(...)`. Reject caller `owner`/`client_recovery_key` mismatch `403`; force bound vars; `503` unconfigured; `outcome_unknown:true`+`502/504` when set.\n- Status: query by id/address/default; `403` unless `template_id` matches and returned `variables.owner`/`client_recovery_key` match derived values (IDOR guard). No token/key logging.\n\n## 5. Docs/Tests\n- `ENDPOINTS.md` add routes + trust boundary.\n- New `src/ArkadeExecutorClient.test.js`: `node --test`; cover helper encoding/BIP-68 trap, JCS ID integrity, idempotency, timeout, `ErrBlocked`, redaction, and live `startArkadeServer` stub-gateway auth tests (401/403/403/roundtrip).",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "mistralai/devstral-2512",
+      "rc": -1,
+      "elapsed_s": 540.3,
+      "turns": 52,
+      "tool_calls": 66,
+      "total_tokens": 2177394,
+      "input_tokens": 2149840,
+      "output_tokens": 27554,
+      "reasoning_tokens": 0,
+      "text": "I see the issue! The JSON.stringify with a replacer function doesn't recursively sort nested objects. I need to implement a proper canonical JSON serialization. Let me fix this:",
+      "stderr": "TIMEOUT after 540s",
+      "stage": "worker"
+    },
+    {
+      "model": "z-ai/glm-5.3-prime",
+      "rc": 0,
+      "elapsed_s": 38.55,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 18508,
+      "input_tokens": 14151,
+      "output_tokens": 4357,
+      "reasoning_tokens": 3705,
+      "text": "**NOT APPROVED \u2014 real bugs found:**\n\n- **Missing deliverable (critical):** No changes to `src/ArkadeServer.js`. The `/arkade/executor/delegation/register` / `status` routes don't exist \u2014 the wallet-ownership binding (`403` on spoofed `owner`/`client_recovery_key`), IDOR guard on `status` lookups, `401` auth, `503/504/502` mapping, and `getClientSignerFromToken`/`getDerivedServerPublicKey`/`deriveAggregatedPk33` wiring are entirely absent. `ENDPOINTS.md` documents endpoints that are not implemented.\n- **Tests fail (rc=1, 3 failures):** Test 11 fails because `registerDelegation` checks `enabled` before `validateLowercaseHexVars`, and the test passes `cfg: client.cfg` \u2014 the client object exposes no `cfg` property, so it's always disabled. Two additional failures (hidden in `...`) likely include the fixture JCS-integrity assertion; the hardcoded artifact ID `b7163757...` in `nuri_renew.json` must be re-verified against actual JCS output.\n- **Missing required tests:** No idempotent-registration, timeout\u2192`outcomeUnknown: true`, cancelled `ErrBlocked`/`409`, or any live HTTP route tests (401 / cross-wallet spoof 403 / IDOR 403 / authenticated roundtrip). The suite runs only 13 client-level subtests; the test file diff also ends mid-statement (`fetchImpl: async () => ({`), suggesting truncation.\n- **Network errors unclassified:** Only `AbortError` and `ECONNREFUSED`/`ENOTFOUND`/`ECONNRESET` map to `EXECUTOR_OUTCOME_UNKNOWN`. Undici network failures surface as `TypeError` with no `code` and fall through unclassified \u2014 violating the outcome-unknown contract. `getDelegation`/`getInfo` have no try/catch classification at all.\n- **Purpose-scope bypass:** `registerDelegation` accepts caller-supplied `templateId` overriding the pinned `cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4` \u2014 spec requires binding to configured template only.\n- **Secret leak in errors:** `handleResponse` embeds up to 200 chars of raw remote response body into `error.message` with no redaction \u2014 sensitive material can enter logs/error responses, violating the redaction requirement.\n- **Idempotency not implemented:** No `409`\u2192fetch-and-return-active-delegation path; re-registration just throws `EXECUTOR_CONFLICT`.\n- **Weak hex validation:** `String(value || \"\")` lets `0`, `null`, `false`, and empty strings pass as valid \"lowercase hex\" variables.\n\nMinor (non-blocking): `encodeScriptNumHex`/`encodeCsvSequenceHex` (BIP-68 bit-22 `0x00400000`, seconds %512, 16-bit range) look correct; JCS via sort+`JSON.stringify` is adequate for these fixtures.",
+      "stderr": "",
+      "stage": "reviewer"
+    },
+    {
+      "model": "mistralai/devstral-2512",
+      "rc": -1,
+      "elapsed_s": 360.02,
+      "turns": 54,
+      "tool_calls": 54,
+      "total_tokens": 4251942,
+      "input_tokens": 4241894,
+      "output_tokens": 10048,
+      "reasoning_tokens": 0,
+      "text": "Wait, I need to define `expectedOwner` in the register function. Let me check:",
+      "stderr": "TIMEOUT after 360s",
+      "stage": "orchestrator_fix"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "R2_C4_solo_muse_spark_open",
+  "label": "Solo Open-Weight Coding-Specialist: meta/muse-spark-open (816B/42B)",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 2.02,
+  "total_tokens": 3802,
+  "output_tokens": 104,
+  "reasoning_tokens": 14,
+  "total_turns": 1,
+  "total_tool_calls": 0,
+  "added_loc": 0,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "meta/muse-spark-open",
+      "rc": 0,
+      "elapsed_s": 2.02,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 3802,
+      "input_tokens": 3698,
+      "output_tokens": 104,
+      "reasoning_tokens": 14,
+      "text": "Implementing Arkade delegated VTXO renewal slice \u2014 wiring contracts, executor client and wallet-bound routes.",
+      "stderr": "",
+      "stage": "solo_worker"
+    }
+  ]
+}

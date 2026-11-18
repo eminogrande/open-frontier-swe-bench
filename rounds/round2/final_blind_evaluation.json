@@ -1,0 +1,149 @@
+{
+  "gates": {
+    "CLOSED_FRONTIER_GOLD_carbon_fable": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R2_C10_hetero_dsv4pro_devstral_glm53": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "Error: expected 200 status A, got 403\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C10_hetero_dsv4pro_devstral_glm53/[eval1]:239:36\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 4,
+      "gates_total": 7
+    },
+    "R2_C1_solo_mistral_large_4": {
+      "G1_own_tests": false,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": false,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "         ^\n\nError: expected 401 unauth, got 404\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C1_solo_mistral_large_4/[eval1]:175:37\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": false,
+      "gates_passed": 1,
+      "gates_total": 7
+    },
+    "R2_C2_solo_qwen3_8_2_4t": {
+      "G1_own_tests": false,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": false,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "            ^\n\nError: expected 401 unauth, got 404\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C2_solo_qwen3_8_2_4t/[eval1]:175:37\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": false,
+      "gates_passed": 1,
+      "gates_total": 7
+    },
+    "R2_C3_solo_qwen4_max": {
+      "G1_own_tests": false,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": ":\"executor returned a delegation for another wallet\"}\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C3_solo_qwen4_max/[eval1]:217:34\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 3,
+      "gates_total": 7
+    },
+    "R2_C4_solo_muse_spark_open": {
+      "G1_own_tests": false,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": false,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "         ^\n\nError: expected 401 unauth, got 404\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C4_solo_muse_spark_open/[eval1]:175:37\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": false,
+      "gates_passed": 1,
+      "gates_total": 7
+    },
+    "R2_C5_solo_deepseek_v4_pro": {
+      "G1_own_tests": false,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": false,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "         ^\n\nError: expected 401 unauth, got 404\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C5_solo_deepseek_v4_pro/[eval1]:175:37\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": false,
+      "gates_passed": 1,
+      "gates_total": 7
+    },
+    "R2_C6_homo_ml4_4stage": {
+      "G1_own_tests": false,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 4,
+      "gates_total": 7
+    },
+    "R2_C7_hetero_qwen2_4t_ml4_k3": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "              ^\n\nError: missing delegation id\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C7_hetero_qwen2_4t_ml4_k3/[eval1]:220:21\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 4,
+      "gates_total": 7
+    },
+    "R2_C8_hetero_k3_muse_ml4": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": false,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "            ^\n\nError: expected 403 spoof, got 503\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C8_hetero_k3_muse_ml4/[eval1]:204:36\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 3,
+      "gates_total": 7
+    },
+    "R2_C9_hetero_ml4_ds41_qwen2_4t": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "   ^\n\nError: expected 200 status A, got 403\n    at file:///private/tmp/subtasks/st5_round2/wt_R2_C9_hetero_ml4_ds41_qwen2_4t/[eval1]:239:36\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 5,
+      "gates_total": 7
+    }
+  },
+  "anon_map": {
+    "CANDIDATE_A": "R2_C5_solo_deepseek_v4_pro",
+    "CANDIDATE_B": "R2_C10_hetero_dsv4pro_devstral_glm53",
+    "CANDIDATE_C": "R2_C6_homo_ml4_4stage",
+    "CANDIDATE_D": "R2_C8_hetero_k3_muse_ml4",
+    "CANDIDATE_E": "R2_C3_solo_qwen4_max",
+    "CANDIDATE_F": "R2_C1_solo_mistral_large_4",
+    "CANDIDATE_G": "R2_C4_solo_muse_spark_open",
+    "CANDIDATE_H": "R2_C7_hetero_qwen2_4t_ml4_k3",
+    "CANDIDATE_I": "R2_C2_solo_qwen3_8_2_4t",
+    "CANDIDATE_J": "R2_C9_hetero_ml4_ds41_qwen2_4t"
+  },
+  "fable_raw": "```json\n{\n  \"scores\": {\n    \"CANDIDATE_A\": {\n      \"correctness_25\": 0,\n      \"security_25\": 0,\n      \"craft_brevity_25\": 1,\n      \"tests_docs_25\": 0,\n      \"total_100\": 1,\n      \"key_strengths\": \"No regression to existing server (G6 only).\",\n      \"flaws_found\": \"Empty diff: no fixtures, client, routes, tests or docs. 1/7 gates.\"\n    },\n    \"CANDIDATE_B\": {\n      \"correctness_25\": 8,\n      \"security_25\": 9,\n      \"craft_brevity_25\": 9,\n      \"tests_docs_25\": 11,\n      \"total_100\": 37,\n      \"key_strengths\": \"Correct config names; client pins the configured template; timeout/network/5xx classified as outcome unknown (G4); own tests pass; docs describe binding and the IDOR guard.\",\n      \"flaws_found\": \"Artifact uses an invented schema (string constructorInputs, script/signatures/covenant objects instead of leaves/asm/witness/arkade), so it does not compile. Template lacks inputs/contract and puts artifact at top level. encodeCsvSequenceHex does not divide seconds by 512 and caps seconds at 65535, so the BIP-68 encoding is wrong. Variable validation rejects empty hex, which is the encoding of 0. Raw upstream body is kept on error.body unredacted; no redirect:\\\"error\\\" and no 7081/admin guard. Long confused comment block left in the CSV helper. G2, G3, G5 failed.\"\n    },\n    \"CANDIDATE_C\": {\n      \"correctness_25\": 11,\n      \"security_25\": 16,\n      \"craft_brevity_25\": 13,\n      \"tests_docs_25\": 9,\n      \"total_100\": 49,\n      \"key_strengths\": \"Passed the live HTTP auth/IDOR gate (G5): owner and client_recovery_key are derived server-side, mismatches return 403, and status re-checks template/owner/recovery key. ScriptNum, CSV and JCS helpers are compact and correct in the visible code. Uncertain outcomes handled (G4). Docs are crisp.\",\n      \"flaws_found\": \"Own test suite fails (G1). Fixtures are minified and use non-standard placeholders ($owner, bare SERVER_KEY), invented arkade inputs, and omit the OP_INSPECTINTENTMESSAGE checks. Template has a top-level artifact and 'spends' with no inputs/contract. getDelegation requires hex for id/address, which breaks bech32m address lookup. Variable validation rejects empty hex (0). No redirect:\\\"error\\\" and no 7081/admin config guard. Deterministic 409 is surfaced as 502. G2, G3 failed.\"\n    },\n    \"CANDIDATE_D\": {\n      \"correctness_25\": 6,\n      \"security_25\": 5,\n      \"craft_brevity_25\": 6,\n      \"tests_docs_25\": 8,\n      \"total_100\": 25,\n      \"key_strengths\": \"Artifact functions, leaves and asm match the gold layout almost exactly. Own tests pass; docs mention the 7081 boundary.\",\n      \"flaws_found\": \"Wrong contract throughout: config is EXECUTOR_URL_V4 plus an EXECUTOR_API_KEY_V4 bearer secret; client calls /v1/delegations and /v1/delegations/{id}/status with an Idempotency-Key header. encodeScriptNumHex, encodeCsvSequenceHex and computeJcsSha256Hex are not exported. Artifact carries a _meta block that changes its content ID. Template artifact ID is a garbage string containing a space, and the variable is named clientRecoveryKey. 409 is treated as unknown outcome. Binding checks cred_id/client_signer_pubkey rather than the derived aggregate owner. Tests use mocks and file-content checks, not live HTTP. G2, G3, G4, G5 failed.\"\n    },\n    \"CANDIDATE_E\": {\n      \"correctness_25\": 12,\n      \"security_25\": 13,\n      \"craft_brevity_25\": 13,\n      \"tests_docs_25\": 7,\n      \"total_100\": 45,\n      \"key_strengths\": \"Config and client both refuse port 7081 and /v1/admin|artifact|template paths, and validate the 64-hex template ID. ScriptNum, CSV and JCS helpers are correct. Only the register POST is marked uncertain on failure; 409 maps to EXECUTOR_DELEGATION_BLOCKED. Secret-named variables are refused and error text redacted. Docs are thorough on the trust boundary.\",\n      \"flaws_found\": \"Own tests fail (G1) and the live HTTP security gate fails (G5). Artifact uses 'script' instead of 'asm', an invented covenant object, wrong witness typing and an extra format field, so it does not compile. Template has a top-level artifact and no inputs/contract. Status default relies on a 'last registered' record rather than a derived lookup. No redirect:\\\"error\\\". G2, G3 failed.\"\n    },\n    \"CANDIDATE_F\": {\n      \"correctness_25\": 5,\n      \"security_25\": 0,\n      \"craft_brevity_25\": 2,\n      \"tests_docs_25\": 0,\n      \"total_100\": 7,\n      \"key_strengths\": \"Artifact leaves, asm and witness layout for forfeit/exit/clientRecovery/renew are close to the gold.\",\n      \"flaws_found\": \"Fixtures only: no client, config, routes, tests or docs. Artifact adds formatVersion and invented arkade inputs in place of OP_INSPECTINTENTMESSAGE. Template lacks inputs/contract and uses a top-level artifact. 1/7 gates.\"\n    },\n    \"CANDIDATE_G\": {\n      \"correctness_25\": 0,\n      \"security_25\": 0,\n      \"craft_brevity_25\": 1,\n      \"tests_docs_25\": 0,\n      \"total_100\": 1,\n      \"key_strengths\": \"No regression to existing server (G6 only).\",\n      \"flaws_found\": \"Empty diff: nothing delivered. 1/7 gates.\"\n    },\n    \"CANDIDATE_H\": {\n      \"correctness_25\": 13,\n      \"security_25\": 14,\n      \"craft_brevity_25\": 14,\n      \"tests_docs_25\": 13,\n      \"total_100\": 54,\n      \"key_strengths\": \"Clean, compact client with correct ScriptNum/CSV (BigInt, 512 trap, bit 22) and strict JCS. Sets redirect:\\\"error\\\". Executor-controlled text is kept out of error.message. Timeout/network/5xx classified as outcome unknown (G4). Own tests pass and include a live HTTP harness. Docs are concise and cover binding, IDOR and the admin boundary.\",\n      \"flaws_found\": \"Live HTTP security gate failed (G5). Artifact adds formatVersion, and the renew asm uses length-prefixed pushes, wrong ordering and an invented intent input, so it does not compile. Template uses 'spending' and a top-level artifact with no inputs/contract. Deterministic 400/409 are surfaced as 502 instead of 409. 429 is treated as unknown outcome. Variable regex rejects empty hex (0). Touched ArkadeDerive.js to add a pub33 alias, outside scope. No 7081/admin config guard. G2, G3 failed.\"\n    },\n    \"CANDIDATE_I\": {\n      \"correctness_25\": 0,\n      \"security_25\": 0,\n      \"craft_brevity_25\": 1,\n      \"tests_docs_25\": 0,\n      \"total_100\": 1,\n      \"key_strengths\": \"No regression to existing server (G6 only).\",\n      \"flaws_found\": \"Empty diff: nothing delivered. 1/7 gates.\"\n    },\n    \"CANDIDATE_J\": {\n      \"correctness_25\": 15,\n      \"security_25\": 14,\n      \"craft_brevity_25\": 14,\n      \"tests_docs_25\": 15,\n      \"total_100\": 58,\n      \"key_strengths\": \"Best gate result (5/7), the only candidate to pass the encoding/JCS invariants gate (G3). Artifact uses the proper leaves/asm/witness schema. Template has the correct inputs/contract/arguments/spend structure and an artifact ID. Helpers are correct. Secret-looking variables are refused, 5xx/408/timeout are classified as unknown, and template_id mismatch returns 403. Docs are clear; .env.example updated.\",\n      \"flaws_found\": \"Live HTTP security gate failed (G5). Artifact adds unspecified DELEGATE_KEY cosigner checks to the renew covenant, so it does not compile (G2). Template adds a top-level artifact, a per-input schedule and an output index beyond the spec. POST body uses camelCase templateId/expiresAt instead of template_id/expires_at. Every deterministic 4xx is labelled ErrBlocked. normalizeDelegation self-reference hack and loose cfg aliases are bloat. No redirect:\\\"error\\\" and no 7081/admin config guard. Variable regex rejects empty hex (0).\"\n    }\n  },\n  \"ranking\": [\n    \"CANDIDATE_J\",\n    \"CANDIDATE_H\",\n    \"CANDIDATE_C\",\n    \"CANDIDATE_E\",\n    \"CANDIDATE_B\",\n    \"CANDIDATE_D\",\n    \"CANDIDATE_F\",\n    \"CANDIDATE_A\",\n    \"CANDIDATE_G\",\n    \"CANDIDATE_I\"\n  ]\n}\n```"
+}

@@ -1,0 +1,72 @@
+{
+  "id": "R2_C8_hetero_k3_muse_ml4",
+  "label": "Hetero Open-Frontier B: Planner kimi-k3.1-pro -> Worker muse-spark-open -> Reviewer mistral-large-4-0 -> Orch muse-spark-open",
+  "open_weights": true,
+  "mode": "pipeline",
+  "wall_s": 997.84,
+  "total_tokens": 3468815,
+  "output_tokens": 28169,
+  "reasoning_tokens": 10977,
+  "total_turns": 68,
+  "total_tool_calls": 96,
+  "added_loc": 661,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "model": "moonshotai/kimi-k3.1-pro",
+      "rc": 0,
+      "elapsed_s": 89.42,
+      "turns": 5,
+      "tool_calls": 18,
+      "total_tokens": 133438,
+      "input_tokens": 128926,
+      "output_tokens": 4512,
+      "reasoning_tokens": 2438,
+      "text": "1. **Fixtures:** Create `scripts/fixtures/nuri_delegated_vtxo.json` exactly as artifact-v1 `NuriDelegatedVtxo`, with the six specified constructor inputs, empty structs, and four leaves. Preserve exact scripts/signature injection: MuSig2 `forfeit`, owner CSV `exit`, client-key CSV `clientRecovery`; `renew` must enforce expiry-window arithmetic, `register` intent, empty onchain indexes, `output+maxFee>=input`, and `OP_PUSHCURRENTINPUTINDEX OP_1SUB 5 0 OP_TUNNEL`, retaining scriptPubKey/assets with server+emulator injected signatures. Create `nuri_renew.json` with exact variables, renew output/fees/delegation schedule, and `artifact = SHA256(RFC8785(artifact))`. Hash canonical UTF-8 bytes, never formatted file bytes.\n\n2. **Client/config:** Add `src/ArkadeExecutorClient.js`: implement `encodeScriptNumHex` using BigInt, minimal little-endian magnitude/sign-bit encoding (`0n \u2192 \"\"`; append `00` when positive high bit is set). `encodeCsvSequenceHex` must encode the **BIP-68 sequence**, not raw delay: blocks `value`; seconds `(value/512)|(1<<22)`; require nonnegative integer, seconds divisible by 512, 16-bit masked range, no disable flag; then ScriptNum-encode. Implement true RFC-8785 JCS + SHA-256. Follow `ArkadeNotifications.js:49-91` for URL normalization, `AbortController`, and `finally clearTimeout`, but never include upstream bodies/secrets in errors. Permit only `/v1/info`, public delegation POST/GET. Classify timeout/network/5xx registration as `EXECUTOR_OUTCOME_UNKNOWN`, `outcomeUnknown=true`; deterministic 400 and cancelled-409 `ErrBlocked` separately; return existing active delegation idempotently. Reject secret/token/seed/private-key fields. At `ArkadeConfig.js:354` and return map `:507`, add blank-default URL/template and 10-second timeout; enabled only when both are set. Do not alter legacy worker behavior at `:468`.\n\n3. **Routes/tests/docs:** Import client near `ArkadeServer.js:42`; instantiate near `:6036`, dispatch POST routes near `:6148`. Handlers reuse `parseJson` `:231`, `json` `:212`, `verifyRequestAuth` `:2440` (auth failures 401), `getClientSignerFromToken` `:4196`, `getDerivedServerPublicKey` `:2768`\u2014use `derived.pub`, not `pub33`\u2014and `deriveAggregatedPk33` `:288`. Allowlist variables; CSV-encode delays and ScriptNum-encode window/fee. Reject mismatched supplied owner/recovery keys with 403; always overwrite both from token-derived wallet binding. Validate template/owner/recovery on registration and every status response, including id/address/default caller lookup. Return 503 unconfigured; timeout 504/network-5xx 502 with `outcome_unknown:true`. Add `src/ArkadeExecutorClient.test.js` covering all required vectors and live stub-gateway 401/403/IDOR/roundtrip cases; document routes/trust boundaries after `ENDPOINTS.md:18`.",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "meta/muse-spark-open",
+      "rc": -1,
+      "elapsed_s": 540.01,
+      "turns": 15,
+      "tool_calls": 26,
+      "total_tokens": 816940,
+      "input_tokens": 813782,
+      "output_tokens": 3158,
+      "reasoning_tokens": 784,
+      "text": "",
+      "stderr": "TIMEOUT after 540s",
+      "stage": "worker"
+    },
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": 0,
+      "elapsed_s": 8.27,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 2879,
+      "input_tokens": 2565,
+      "output_tokens": 314,
+      "reasoning_tokens": 133,
+      "text": "**REJECTED \u2014 empty diff, zero deliverables implemented.**\n\n- Missing all files: `scripts/fixtures/nuri_delegated_vtxo.json`, `scripts/fixtures/nuri_renew.json`, `src/ArkadeExecutorClient.js`, `src/ArkadeExecutorClient.test.js`; no changes in `src/ArkadeServer.js`, `src/ArkadeConfig.js`, `ENDPOINTS.md`.\n- `node --test src/ArkadeExecutorClient.test.js` \u2192 rc=1 \"Could not find\" \u2014 no tests exist, so none of the required contracts (JCS ID, BIP-68 512s trap, 401/403/IDOR checks) can be verified.\n- No routes `POST /arkade/executor/delegation/{register,status}`, no wallet-binding logic \u2014 entire Issue #172 server slice absent.",
+      "stderr": "",
+      "stage": "reviewer"
+    },
+    {
+      "model": "meta/muse-spark-open",
+      "rc": -1,
+      "elapsed_s": 360.02,
+      "turns": 47,
+      "tool_calls": 52,
+      "total_tokens": 2515558,
+      "input_tokens": 2495373,
+      "output_tokens": 20185,
+      "reasoning_tokens": 7622,
+      "text": "Fixing missing deliverables \u2014 adding fixtures, client, server routes.",
+      "stderr": "TIMEOUT after 360s",
+      "stage": "orchestrator_fix"
+    }
+  ]
+}

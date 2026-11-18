@@ -1,0 +1,72 @@
+{
+  "id": "R2_C6_homo_ml4_4stage",
+  "label": "Homogeneous Open-Weight 4-Stage: mistral-large-4-0 x4",
+  "open_weights": true,
+  "mode": "pipeline",
+  "wall_s": 1133.79,
+  "total_tokens": 1500002,
+  "output_tokens": 37845,
+  "reasoning_tokens": 23863,
+  "total_turns": 67,
+  "total_tool_calls": 108,
+  "added_loc": 460,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": 0,
+      "elapsed_s": 131.05,
+      "turns": 16,
+      "tool_calls": 28,
+      "total_tokens": 281022,
+      "input_tokens": 277005,
+      "output_tokens": 4017,
+      "reasoning_tokens": 1008,
+      "text": "# Implementation Blueprint \u2014 Issue #172 Server Slice\n\n## Reuse anchors (verified lines)\n- `src/ArkadeServer.js`: `deriveAggregatedPk33` :288, `verifyRequestAuth(body,cfg)` :2440 (throws \u2192 401; rejects purpose-scoped tokens via `token.p` check), `getDerivedServerPublicKey(cfg, clientPk33)` :2768 (returns `{pub,...}`), `getClientSignerFromToken(token)` :4196 (`token.cspk`, 66-hex), `validateHex`/`normalizeHex` :911/:920, `json`/`parseJson`/`logOp`/`truncate`/`withVersionMatrix` :212/:231/:127/:120/:163, dispatch in `startArkadeServer` :6002, route table :6063\u20136160 (insert before the 404 at :6158), `startArkadeServer` :6002.\n- `src/ArkadeConfig.js`: env parsers `parseStringEnv` :114, `parseIntEnv` :100, `parseBoolEnv` :127; append `ARKADE_EXECUTOR_URL_V4`/`_TEMPLATE_ID_V4` (default `\"\"`) + `ARKADE_EXECUTOR_TIMEOUT_MS_V4` (default 10000) to the returned object after `DELEGATE_SUBMIT_URL_V4` :555. Do NOT touch `DELEGATE_WORKER_ENABLED_V4` (:468).\n- `src/ArkadeNotifications.js`: HTTP-client style template (AbortController timeout, `enabled` flag, `permanentIf`).\n- BIP-68 constants already in repo: `src/ArkadeOnchainAddress.js:19-23` (`MASK=0xffff`, `TYPE_FLAG=1<<22`, `GRANULARITY=9`, `SECONDS_MOD=512`).\n\n## File edits\n1. **`scripts/fixtures/nuri_delegated_vtxo.json`** (new): artifact v1, `contractName:\"NuriDelegatedVtxo\"`, 6 `constructorInputs`, `structs:[]`, 4 functions (`forfeit`/`exit`/`clientRecovery`/`renew`) with leaves exactly per spec; `renew` = `arkade` covenant (`OP_PUSHEXPIRY <w> OP_SUB OP_CHECKTIME OP_VERIFY`, `type==\"register\"`, `onchain_output_indexes==\"[]\"`, value+maxFee check, `OP_PUSHCURRENTINPUTINDEX OP_1SUB 5 0 OP_TUNNEL`) + leaf `[\"<SERVER_KEY>\",\"OP_CHECKSIGVERIFY\",\"<EMULATOR_KEY:renew>\",\"OP_CHECKSIG\"]`, both sigs `injected:true`.\n2. **`scripts/fixtures/nuri_renew.json`** (new): `template/v1` proof, 7 variables, `artifact` = JCS SHA-256 hex of fixture #1's exact bytes, spends `function:\"renew\", leaf:\"renew\"`, one `renewed` output + `fees.max:\"<max_fee>\"` + `delegation.schedule.funds.before_expiry_seconds:\"<renewal_window>\"`.\n3. **`src/ArkadeExecutorClient.js`** (new): `encodeScriptNumHex(n)` (0n\u2192`\"\"`; minimal LE sign-magnitude: magnitude bytes, set bit 0x80 on last byte iff negative \u2014 matches `arkade.BigNum`/`CScriptNum`); `encodeCsvSequenceHex({type,value})` \u2014 seconds: reject `value%512!==0` or `value>0xffff<<9`, seq=`(1<<22)|(value>>9)`; blocks: `1..0xffff`; encode via `encodeScriptNumHex`; `computeJcsSha256Hex(doc)` (RFC-8785: recursive key sort, no whitespace, UTF-8, number per ECMAScript `JSON.stringify`, then `sha256` from `ArkadeCrypto.js`); `createArkadeExecutorClient({cfg, fetchImpl=fetch})` \u2014 `enabled = Boolean(url && templateId)`, GET `/v1/info`, POST `/v1/delegation` with `AbortController`+`ARKADE_EXECUTOR_TIMEOUT_MS_V4`, GET `/v1/delegation?id=|?address=`; classify network/timeout/5xx as `error.code=\"EXECUTOR_OUTCOME_UNKNOWN\"`, `error.outcomeUnknown=true`; 400/409 \u2192 deterministic `ErrBlocked`; lowercase-hex validation of all `variables`; idempotent re-register; `redactSecrets()` strips token/seed/secret keys from payloads/errors/logs. Never reference `/v1/admin/*`, 7081, artifact/template mutation.\n4. **`src/ArkadeServer.js`**: two handlers + dispatch entries at ~:6149: `POST /arkade/executor/delegation/register` and `/status`. Each: `parseJson` \u2192 `verifyRequestAuth(body,cfg)` catch\u2192401 \u2192 `clientPk33=getClientSignerFromToken(token)` \u2192 `derived=getDerivedServerPublicKey(cfg,clientPk33)` \u2192 `owner=deriveAggregatedPk33(clientPk33, derived.pub)`, `client_recovery_key=clientPk33`; if body supplies `owner`/`client_recovery_key` and \u2260 derived \u2192 403; force-bind both into `variables`. Register: 503 if `!client.enabled`; call `registerDelegation({templateId: cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4, variables, expiresAt})`; on `outcomeUnknown` \u2192 504/502 `{outcome_unknown:true}`. Status: `getDelegation({id|address})`, then verify `template_id===cfg...` AND `variables.owner===owner` AND `variables.client_recovery_key===clientPk33`, else 403 (IDOR). Log only `truncate()`d fields.\n5. **`ENDPOINTS.md`**: new \"Executor Delegation\" section \u2014 routes, auth, wallet-binding invariant, 503/504/502 semantics, executord public-gateway-only boundary.\n6. **`src/ArkadeExecutorClient.test.js`** (new, `node --test`): scriptnum vectors (`0\u2192\"\"`, `1\u2192\"01\"`, `127\u2192\"7f\"`, `128\u2192\"8000\"`, `-1\u2192\"81\"`), CSV (512\u00b7n ok, non-multiple rejected, >16-bit masked rejected), fixture JCS ID match + 4 leaves, idempotent register, timeout\u2192`outcomeUnknown`, 409 `ErrBlocked`, redaction, live HTTP roundtrip via `startArkadeServer` + stub executord: 401 unauth/purpose-token, 403 cross-wallet owner/recovery spoof, 403 cross-wallet status IDOR, 200 happy path.\n\n## Security checks\n- Owner binding derived server-side only; caller-supplied keys never trusted (403 on mismatch).\n- Status responses re-checked against caller's aggregate key (no IDOR).\n- Secrets redacted before logs/errors; admin/7081/mutation routes unreachable from handlers.",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": -1,
+      "elapsed_s": 540.05,
+      "turns": 30,
+      "tool_calls": 54,
+      "total_tokens": 973253,
+      "input_tokens": 949557,
+      "output_tokens": 23696,
+      "reasoning_tokens": 14337,
+      "text": "Now generate the fixtures canonically:",
+      "stderr": "TIMEOUT after 540s",
+      "stage": "worker"
+    },
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": 0,
+      "elapsed_s": 102.45,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 14378,
+      "input_tokens": 10060,
+      "output_tokens": 4318,
+      "reasoning_tokens": 4059,
+      "text": "ISSUES FOUND (3):\n\n- **Missing deliverable: `src/ArkadeExecutorClient.test.js` does not exist** \u2014 `node --test` fails rc=1. All required tests absent (encodeScriptNumHex/encodeCsvSequenceHex incl. 512 trap, fixture JCS SHA-256 integrity, idempotency, timeout `outcomeUnknown`, ErrBlocked, redaction, live 401/403/IDOR route tests). Consequently the `artifact` ID `ffdab882...` in `nuri_renew.json` is **unverified** against JCS SHA-256 of `nuri_delegated_vtxo.json`.\n- **Wrong field: `deriveAggregatedPk33(clientPk33, derived.pub)`** in `executorWalletBinding` \u2014 contract/helper shape is `derived.pub33`. If `getDerivedServerPublicKey` returns `{ pub33 }`, `owner` derives from `undefined` \u2192 broken wallet binding or crash. Fix to `derived.pub33` (or confirm field name).\n- **Status route missing default lookup**: spec requires status \"by id or address, **or default** by querying the caller's delegation\"; handler returns `400` when neither supplied.",
+      "stderr": "",
+      "stage": "reviewer"
+    },
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": -1,
+      "elapsed_s": 360.02,
+      "turns": 20,
+      "tool_calls": 26,
+      "total_tokens": 231349,
+      "input_tokens": 225535,
+      "output_tokens": 5814,
+      "reasoning_tokens": 4459,
+      "text": "Now checking the `/arkade/auth` response shape, then writing the test file.",
+      "stderr": "TIMEOUT after 360s",
+      "stage": "orchestrator_fix"
+    }
+  ]
+}

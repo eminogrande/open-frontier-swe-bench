@@ -1,0 +1,30 @@
+{
+  "id": "R2_C3_solo_qwen4_max",
+  "label": "Solo Flagship (API-only Qwen4): qwen/qwen4-max",
+  "open_weights": false,
+  "mode": "solo",
+  "wall_s": 600.12,
+  "total_tokens": 800227,
+  "output_tokens": 24302,
+  "reasoning_tokens": 14276,
+  "total_turns": 25,
+  "total_tool_calls": 38,
+  "added_loc": 603,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "qwen/qwen4-max",
+      "rc": -1,
+      "elapsed_s": 600.02,
+      "turns": 25,
+      "tool_calls": 38,
+      "total_tokens": 800227,
+      "input_tokens": 775925,
+      "output_tokens": 24302,
+      "reasoning_tokens": 14276,
+      "text": "Now config:",
+      "stderr": "TIMEOUT after 600s",
+      "stage": "solo_worker"
+    }
+  ]
+}

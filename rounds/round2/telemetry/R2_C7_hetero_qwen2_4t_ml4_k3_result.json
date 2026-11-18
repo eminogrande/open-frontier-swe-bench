@@ -1,0 +1,72 @@
+{
+  "id": "R2_C7_hetero_qwen2_4t_ml4_k3",
+  "label": "Hetero Open-Frontier A: Planner qwen3.8-2.4t-a95b -> Worker mistral-large-4-0 -> Reviewer kimi-k3.1-pro -> Orch mistral-large-4-0",
+  "open_weights": true,
+  "mode": "pipeline",
+  "wall_s": 997.29,
+  "total_tokens": 2618723,
+  "output_tokens": 41796,
+  "reasoning_tokens": 21293,
+  "total_turns": 87,
+  "total_tool_calls": 115,
+  "added_loc": 782,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "model": "qwen/qwen3.8-2.4t-a95b",
+      "rc": 0,
+      "elapsed_s": 65.73,
+      "turns": 5,
+      "tool_calls": 8,
+      "total_tokens": 40345,
+      "input_tokens": 38187,
+      "output_tokens": 2158,
+      "reasoning_tokens": 576,
+      "text": "# Blueprint: Issue #172 executor delegation slice\n\n## 1. Fixtures (`scripts/fixtures/`)\n- `nuri_delegated_vtxo.json` \u2014 artifact v1, exact spec: 6 constructor inputs, `structs: []`, 4 leaves (`forfeit`, `exit`, `clientRecovery`, `renew`) with the specified script arrays + sig injection flags. Deterministic content; no trailing whitespace changes after ID is computed.\n- `nuri_renew.json` \u2014 template/v1, `artifact` = **JCS SHA-256 of the final bytes of `nuri_delegated_vtxo.json`**. Compute once with the new `computeJcsSha256Hex` and freeze. Test must re-verify this cross-reference.\n\n## 2. `src/ArkadeExecutorClient.js` (new)\n- `encodeScriptNumHex`: `0n \u2192 \"\"`; minimal little-endian; append `0x80` sign byte when MSB high bit set; negatives set sign bit on extra/last byte. Match `arkade.BigNum`.\n- `encodeCsvSequenceHex`: blocks \u2192 value as-is (\u2264 `0xFFFF`); seconds \u2192 require `value % 512 === 0`, set bit `0x400000`, push `value/512` (reject if masked value > `0xFFFF`). **Trap:** forgetting the type flag or 512 divisibility check produces unspendable recoveries.\n- `computeJcsSha256Hex`: RFC-8785 key-sorted canonical JSON \u2192 `crypto.createHash(\"sha256\")` hex.\n- `createArkadeExecutorClient({cfg, fetchImpl})`: only `/v1/info`, `POST /v1/delegation`, `GET /v1/delegation?id=|address=`. **Never** `/v1/admin/*`, `7081`, artifact/template mutations. `AbortController` timeout (`ARKADE_EXECUTOR_TIMEOUT_MS_V4` default 10000); fetch failure/abort/5xx \u2192 throw `{code:\"EXECUTOR_OUTCOME_UNKNOWN\", outcomeUnknown:true}`; 400/409 `ErrBlocked` \u2192 deterministic error; validate all variables `^[0-9a-f]+$`; strip `token|seed|secret|key_material` fields from all logs/errors.\n\n## 3. Config (`src/ArkadeConfig.js`)\nInsert near L535\u2013555 (after DELEGATE block), reusing `parseStringEnv` (L114) / `parseIntEnv` (L100): `ARKADE_EXECUTOR_URL_V4` (default `\"\"`), `ARKADE_EXECUTOR_TEMPLATE_ID_V4` (default `\"\"`), `ARKADE_EXECUTOR_TIMEOUT_MS_V4` (default 10000). Disabled iff URL or template empty. **Do not touch** `DELEGATE_WORKER_ENABLED_V4` (L468).\n\n## 4. Routes (`src/ArkadeServer.js`)\nPattern: dispatch block L6064+; add two `if (req.method === \"POST\" && routePath === ...)` before 404 (L6228).\n- Reuse: `verifyRequestAuth(body, cfg)` (L2440) \u2192 `getClientSignerFromToken(token)` (L4196) \u2192 `getDerivedServerPublicKey(cfg, clientPk33)` (L2768) \u2192 `deriveAggregatedPk33(clientPk33, derived.pub)` (L288, takes Buffer).\n- Body-supplied `owner`/`client_recovery_key` mismatching derived values \u2192 **403**. Always overwrite with derived values before calling executor.\n- `status`: after fetch, verify `template_id === cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4` AND `variables.owner/client_recovery_key` match caller, else 403 (IDOR block).\n- Unconfigured \u2192 503; `outcomeUnknown` \u2192 504/502 + `outcome_unknown: true`.\n\n## 5. `ENDPOINTS.md`\nAdd section after \"Safe co-signer\": both routes, auth via full assertion, wallet-binding invariant, sealed-route note at L7 unchanged.\n\n## 6. Tests (`src/ArkadeExecutorClient.test.js`)\n`node --test`: encoding edge cases, fixture JCS cross-ref + 4 leaves, stub `fetchImpl` for idempotency/timeout\u2192unknown/`ErrBlocked`/redaction; `startArkadeServer` (L6002) harness with stub executord for 401/403/403-IDOR/roundtrip.",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": -1,
+      "elapsed_s": 540.2,
+      "turns": 49,
+      "tool_calls": 66,
+      "total_tokens": 1970779,
+      "input_tokens": 1948459,
+      "output_tokens": 22320,
+      "reasoning_tokens": 10210,
+      "text": "Now ENDPOINTS.md:",
+      "stderr": "TIMEOUT after 540s",
+      "stage": "worker"
+    },
+    {
+      "model": "moonshotai/kimi-k3.1-pro",
+      "rc": 0,
+      "elapsed_s": 51.81,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 15210,
+      "input_tokens": 9348,
+      "output_tokens": 5862,
+      "reasoning_tokens": 5558,
+      "text": "- **Missing deliverable:** `src/ArkadeExecutorClient.test.js` is absent; the required test command fails with rc=1, and none of the required unit/live HTTP security tests exist.\n\n- **Correctness bugs:** In `scripts/fixtures/nuri_delegated_vtxo.json`, `0x136f6e636861696e5f6f75747075745f696e6465786573` declares a 19-byte push, but `onchain_output_indexes` is 22 bytes; the prefix must be `0x16`. The emitted covenant script is malformed and its intent check cannot work as required. In `src/ArkadeServer.js`, `executorWalletBinding()` uses `derived.pub` instead of the required `derived.pub33`, potentially passing `undefined` to `deriveAggregatedPk33` and breaking authenticated registration/status.\n\n- **Security boundary leaks:** `src/ArkadeExecutorClient.js` leaves `fetch` redirects at the default `follow`; a 307/308 can forward the registration body to another origin, including `:7081` or `/v1/admin/*`, bypassing the public-gateway boundary. Also, `deterministicError()` embeds unsanitized executor-controlled `body.message`/`body.detail` in `error.message`, which `executorErrorResponse()` writes to logs via `logOp`; returned secrets/tokens therefore bypass `redactSecrets()`.",
+      "stderr": "",
+      "stage": "reviewer"
+    },
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": 0,
+      "elapsed_s": 338.26,
+      "turns": 32,
+      "tool_calls": 41,
+      "total_tokens": 592389,
+      "input_tokens": 580933,
+      "output_tokens": 11456,
+      "reasoning_tokens": 4949,
+      "text": "All findings fixed; `node --test src/ArkadeExecutorClient.test.js` \u2192 12/12 pass, rc=0.\n\nChanges:\n- **`scripts/fixtures/nuri_delegated_vtxo.json`**: `0x13\u2026` \u2192 `0x16\u2026` for the 22-byte `onchain_output_indexes` push; also repaired the adjacent malformed `0x08\u2026` type push to a full 8-byte `\"register\"` literal (`0x087265676973746572`) so the emitted script is well-formed end-to-end.\n- **`src/ArkadeServer.js`** (`executorWalletBinding`): `derived.pub` \u2192 `derived.pub33`; added `pub33` to `deriveServerPublicKey`'s return in **`src/ArkadeDerive.js`** (33-byte Buffer, verified).\n- **`src/ArkadeExecutorClient.js`**: `redirect: \"error\"` on all fetches (307/308 can no longer forward the registration body cross-origin); `deterministicError()` no longer embeds executor-controlled `message`/`detail` in `error.message` (which `logOp` writes verbatim) \u2014 redacted body stays on `error.executorError`.\n- **`src/ArkadeExecutorClient.test.js`** (new): unit tests (ScriptNum/CSV/JCS/redact) + live-HTTP tests on a local `node:http` server: round-trip, path allowlist (`/v1/info`, `/v1/delegation` only), 307-to-other-origin never followed (target receives 0 requests), 400 error message leak-free, 5xx/429 \u2192 `EXECUTOR_OUTCOME_UNKNOWN`, 409 deterministic, and fixture push well-formedness.",
+      "stderr": "",
+      "stage": "orchestrator_fix"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "R2_C1_solo_mistral_large_4",
+  "label": "Solo Open-Weight (Mistral Vibe Engine): mistralai/mistral-large-4-0 (1T/52B)",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 600.12,
+  "total_tokens": 1541372,
+  "output_tokens": 26745,
+  "reasoning_tokens": 22883,
+  "total_turns": 35,
+  "total_tool_calls": 54,
+  "added_loc": 130,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "mistralai/mistral-large-4-0",
+      "rc": -1,
+      "elapsed_s": 600.02,
+      "turns": 35,
+      "tool_calls": 54,
+      "total_tokens": 1541372,
+      "input_tokens": 1514627,
+      "output_tokens": 26745,
+      "reasoning_tokens": 22883,
+      "text": "I have full context now. Let me create the fixtures first:",
+      "stderr": "TIMEOUT after 600s",
+      "stage": "solo_worker"
+    }
+  ]
+}

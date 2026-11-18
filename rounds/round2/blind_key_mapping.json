@@ -1,0 +1,12 @@
+{
+  "CANDIDATE_A": "R2_C5_solo_deepseek_v4_pro",
+  "CANDIDATE_B": "R2_C10_hetero_dsv4pro_devstral_glm53",
+  "CANDIDATE_C": "R2_C6_homo_ml4_4stage",
+  "CANDIDATE_D": "R2_C8_hetero_k3_muse_ml4",
+  "CANDIDATE_E": "R2_C3_solo_qwen4_max",
+  "CANDIDATE_F": "R2_C1_solo_mistral_large_4",
+  "CANDIDATE_G": "R2_C4_solo_muse_spark_open",
+  "CANDIDATE_H": "R2_C7_hetero_qwen2_4t_ml4_k3",
+  "CANDIDATE_I": "R2_C2_solo_qwen3_8_2_4t",
+  "CANDIDATE_J": "R2_C9_hetero_ml4_ds41_qwen2_4t"
+}
