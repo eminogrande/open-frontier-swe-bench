@@ -1,0 +1,29 @@
+{
+  "id": "C6_solo_deepseek_v4_1",
+  "label": "Solo Fast-Brain Control: deepseek-v4.1-flash-abliterated (1-shot agent)",
+  "mode": "solo",
+  "wall_s": 380.11,
+  "total_tokens": 8784093,
+  "output_tokens": 30745,
+  "reasoning_tokens": 11270,
+  "total_turns": 79,
+  "total_tool_calls": 98,
+  "added_loc": 1389,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "model": "deepseek-v4.1-flash-abliterated",
+      "rc": 0,
+      "elapsed_s": 380.08,
+      "turns": 79,
+      "tool_calls": 98,
+      "total_tokens": 8784093,
+      "input_tokens": 8753348,
+      "output_tokens": 30745,
+      "reasoning_tokens": 11270,
+      "text": "Implemented Issue #172 server slice.\n\n- Added fixtures: `scripts/fixtures/nuri_delegated_vtxo.json`, `scripts/fixtures/nuri_renew.json`; artifact hash verified `b9c74e80\u2026`.\n- Added `src/ArkadeExecutorClient.js` with CScriptNum/BIP-68/JCS helpers, timeout/uncertain outcome handling, idempotent replay, camelCase normalization, secret redaction.\n- Added config, authenticated wallet-bound routes, IDOR/ownership checks, docs, env examples.\n- Added integration/unit coverage in `src/ArkadeExecutorClient.test.js`.\n\nVerification: `node --test src/ArkadeExecutorClient.test.js` \u2192 **13 passed, 0 failed**. Fixtures also validate against the official delegatee template parser.",
+      "stderr": "",
+      "stage": "solo_worker"
+    }
+  ]
+}

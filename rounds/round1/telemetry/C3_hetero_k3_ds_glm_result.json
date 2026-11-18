@@ -1,0 +1,71 @@
+{
+  "id": "C3_hetero_k3_ds_glm",
+  "label": "Hetero Speed-Brain: Planner k3.1-pro + Worker deepseek-v4.1-flash + Reviewer glm-5.3 + Orch deepseek-v4.1-flash",
+  "mode": "pipeline",
+  "wall_s": 865.42,
+  "total_tokens": 7014140,
+  "output_tokens": 63819,
+  "reasoning_tokens": 28764,
+  "total_turns": 121,
+  "total_tool_calls": 143,
+  "added_loc": 1315,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "model": "k3.1-pro",
+      "rc": 0,
+      "elapsed_s": 263.69,
+      "turns": 9,
+      "tool_calls": 22,
+      "total_tokens": 199808,
+      "input_tokens": 194038,
+      "output_tokens": 5770,
+      "reasoning_tokens": 3429,
+      "text": "**Atomic blueprint** *(current line numbers; no files changed)*:\n\n1. **Fixtures + executor client.** Create both `scripts/fixtures/*.json` exactly as specified: artifact v1 `NuriDelegatedVtxo`, six constructor inputs, empty structs, four leaves preserving the exact scripts/signature injection. Renew covenant must enforce expiry subtraction/check, register intent, empty on-chain indexes, value+maxFee coverage, and `OP_PUSHCURRENTINPUTINDEX OP_1SUB 5 0 OP_TUNNEL`. Template must preserve funds value/locking/assets, max-fee and renewal schedule. Add `src/ArkadeExecutorClient.js`: strict RFC-8785 canonicalization + SHA-256 over the **parsed artifact document**, not file bytes; insert that hex ID into `nuri_renew.json`. Implement minimal signed little-endian CScriptNum (`0n \u2192 \"\"`, sign-byte padding). CSV: blocks use `value`; seconds require divisibility by 512, encode `value/512`, set `1<<22`; require integer, nonnegative, 16-bit units\u2014never encode raw seconds/fixed-width integers. Model timeout/fetch handling on `src/ArkadeNotifications.js:53-95`; expose only info/register/get delegation, idempotently return active duplicates, classify cancelled `ErrBlocked`, mark POST network/timeout/5xx `EXECUTOR_OUTCOME_UNKNOWN`, reject/redact secret-like fields and upstream response text.\n\n2. **Configuration + authenticated routes.** Add URL/template/timeout parsing near `src/ArkadeConfig.js:406-416`, defaults `\"\"`, `\"\"`, `10000`, returned near `:517-520`; enabled requires URL **and** template. Do not alter worker defaults/routes. Import/instantiate client near `src/ArkadeServer.js:48`/`:6036`, dispatch at `:6148`, expose through `server.arkade` at `:6265`. Handlers can follow `:5171`: parse, `verifyRequestAuth` (`:2440`; failures 401), then configuration 503. Derive using `getClientSignerFromToken` (`:4196`), `getDerivedServerPublicKey` (`:2768`), and `deriveAggregatedPk33` (`:288`); use actual `derived.pub` field. Force owner aggregate and recovery key client key; mismatches 403. Whitelist/encode remaining variables. Status without selector uses caller-bound address; every result must match configured template and both keys or 403. Unknown outcome: timeout 504, other 502, `outcome_unknown:true`; never proxy admin/mutation routes or log bodies/keys.\n\n3. **Tests/docs.** Add `src/ArkadeExecutorClient.test.js` covering encoding boundaries, fixture hashes/leaves, idempotency, timeout, cancellation, redaction, plus real HTTP two-wallet auth/spoof/IDOR/roundtrip tests against stub executord. Document routes and trust boundaries after `ENDPOINTS.md:25`. Run `node --test src/ArkadeExecutorClient.test.js`.",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "deepseek-v4.1-flash-abliterated",
+      "rc": 0,
+      "elapsed_s": 455.61,
+      "turns": 84,
+      "tool_calls": 88,
+      "total_tokens": 6040817,
+      "input_tokens": 5997364,
+      "output_tokens": 43453,
+      "reasoning_tokens": 15594,
+      "text": "Implemented complete executor-delegation slice.\n\nKey files:\n- `src/ArkadeExecutorClient.js` \u2014 JCS SHA-256 IDs, CScriptNum/BIP-68 encoding, timeout/unknown-outcome handling, `ErrBlocked`, redaction.\n- `scripts/fixtures/nuri_delegated_vtxo.json` + `nuri_renew.json` \u2014 4-leaf artifact and renewal template with exact content-ID link.\n- `src/ArkadeConfig.js`, `src/ArkadeServer.js` \u2014 executor config, authenticated wallet-bound routes, template/key verification, IDOR protection.\n- `src/ArkadeExecutorClient.test.js` \u2014 unit, fixture, timeout, cancellation, redaction, and live HTTP auth/spoof/IDOR/roundtrip tests.\n- `ENDPOINTS.md` \u2014 routes and trust boundaries.\n\nTests green:\n\n```text\n1..10\n# pass 10\n# fail 0\n```\n\nCommand: `node --test src/ArkadeExecutorClient.test.js`",
+      "stderr": "",
+      "stage": "worker"
+    },
+    {
+      "model": "glm-5.3-abliterated",
+      "rc": 0,
+      "elapsed_s": 4.32,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 13416,
+      "input_tokens": 13264,
+      "output_tokens": 152,
+      "reasoning_tokens": 137,
+      "text": "I'll inspect the actual files to verify the diff claims.",
+      "stderr": "",
+      "stage": "reviewer"
+    },
+    {
+      "model": "deepseek-v4.1-flash-abliterated",
+      "rc": 0,
+      "elapsed_s": 139.81,
+      "turns": 27,
+      "tool_calls": 33,
+      "total_tokens": 760099,
+      "input_tokens": 745655,
+      "output_tokens": 14444,
+      "reasoning_tokens": 9604,
+      "text": "Verified. Reviewer text was only a placeholder, so I inspected the diff and hardened real gaps.\n\nFixed:\n- `src/ArkadeServer.js` \u2014 no false `403` when a successful registration returns a minimal body; response fields are backfilled. Status still requires template/keys. Bounded the address cache at 10k entries.\n- `src/ArkadeExecutorClient.js` \u2014 plain-text upstream errors now redact `token=` / `seed:` style secrets, not just JSON/Bearer/JWT.\n- Added regression test for both, plus `.env.example` and CHANGELOG docs.\n\n`node --test src/ArkadeExecutorClient.test.js` \u2192 exit 0, 11/11 pass.",
+      "stderr": "",
+      "stage": "orchestrator_fix"
+    }
+  ]
+}

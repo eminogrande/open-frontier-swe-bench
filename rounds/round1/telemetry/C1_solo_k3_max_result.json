@@ -1,0 +1,29 @@
+{
+  "id": "C1_solo_k3_max",
+  "label": "Solo Single-Brain: k3.1-pro (1-shot agent)",
+  "mode": "solo",
+  "wall_s": 600.05,
+  "total_tokens": 1012631,
+  "output_tokens": 6050,
+  "reasoning_tokens": 1605,
+  "total_turns": 21,
+  "total_tool_calls": 51,
+  "added_loc": 0,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "k3.1-pro",
+      "rc": -1,
+      "elapsed_s": 600.02,
+      "turns": 21,
+      "tool_calls": 51,
+      "total_tokens": 1012631,
+      "input_tokens": 1006581,
+      "output_tokens": 6050,
+      "reasoning_tokens": 1605,
+      "text": "Upstream gateway uses camelCase JSON and returns active re-registrations unchanged; cancelled delegations return deterministic `ErrBlocked`.",
+      "stderr": "TIMEOUT after 600s",
+      "stage": "solo_worker"
+    }
+  ]
+}

@@ -1,0 +1,2008 @@
+diff --git a/ENDPOINTS.md b/ENDPOINTS.md
+index b46ddb6..ec9a72c 100644
+--- a/ENDPOINTS.md
++++ b/ENDPOINTS.md
+@@ -119,3 +119,16 @@ of the user whose invite link the new user arrived through. It is stored in
+ 6. `kind: "arkade_stablecoin"` records buying EURC or USDC on Base out of the Arkade balance. Mechanically it is the same single send into an Intents lockup as a Lightning payment — Lightning is an internal hop in the route — but it is a different act, so it has its own kind and its own approval. `arkade_intents` only. `final_recipient` must be a `0x` EVM address and is validated, so a BOLT11 cannot occupy that slot. It takes `output_asset` (`EURC` / `USDC`), `output_amount` (decimal, token units, provider precision preserved, exponential notation rejected), `output_chain` (`base`), and an optional `route_id`.
+ 7. An EVM `final_recipient` is rejected on every other kind. No other kind has a legitimate `0x` recipient, so one there is a misfiled stablecoin purchase — which would otherwise render an Ark send or Lightning payment approval over a purchase of euros, with every other check passing. Adding the correct kind does not by itself remove the incorrect one.
+ 8. The stablecoin route carries **no** `final_amount_sats`, `invoice`, or `payment_hash`, and all three are rejected rather than ignored. The sats figure inside the route is the internal Lightning hop; binding it would describe a payment the user never makes. What is bound is `funding_amount_sats` — what leaves their balance — plus the output asset, amount and chain. The approval reads "Buy 10.556502 EURC" with the note "Spending 20,060 sats from your Arkade balance."
++
++## Executor VTXO Renewal Delegation
++
++1. `POST /arkade/executor/delegation/register` registers an idempotent offline VTXO renewal delegation with `executord`'s public `ExecutorService` gateway (`POST /v1/delegation`) for `ARKADE_EXECUTOR_TEMPLATE_ID_V4` (`nuri_renew.json` / 4-leaf `NuriDelegatedVtxo` covenant).
++   - **Auth**: General-purpose WebAuthn request assertion (`verifyRequestAuth`: `token`, `client_data_b64u`, `auth_data_b64u`, `sig_b64u`). Purpose-scoped challenge tokens are rejected (`401`).
++   - **Body fields**: `exit_delay_csv` (`{ type: "blocks" | "seconds", value }`, encoded via BIP-68 `encodeCsvSequenceHex`; or validated BIP-68 hex `variables.exit_delay`), `renewal_window_seconds` (`1..31536000`, or `variables.renewal_window`), `max_fee_sats` (`0..10000000`, or `variables.max_fee`), optional `expires_at` (unix seconds `>= 0`, default `0`). `client_recovery_delay` is pinned to `COSIGNER_NURI_SERVER_CSV` (`encodeCsvSequenceHex`).
++   - **Response (`200`)**: `{ ok: true, delegation }` (whitelisted `Delegation` view).
++2. `POST /arkade/executor/delegation/status` fetches a wallet's delegation and tracked coins (`GET /v1/delegation`).
++   - **Auth**: General-purpose WebAuthn request assertion (`verifyRequestAuth`).
++   - **Body fields**: optional `id` (positive integer) or `address` (bech32m string), mutually exclusive; when omitted, resolves the authenticated wallet's registered delegation (`404` if none).
++   - **Response (`200`)**: `{ ok: true, delegation, coins }`.
++3. **Strict wallet binding & anti-IDOR boundary**: Both routes verify credential->`clientPk33` consistency against `recoveryStore`, derive `derived = getDerivedServerPublicKey(cfg, clientPk33)` and `owner = deriveAggregatedPk33(clientPk33, derived.pub)`, and bind `variables.owner = owner` and `variables.client_recovery_key = clientPk33`. Any caller-supplied `owner`, `client_recovery_key`, or `template_id` mismatch returns `403` before reaching `executord`. `status` enforces the same `template_id`, `owner`, and `client_recovery_key` match on the upstream response (`403` on foreign delegations with zero leaked fields).
++4. **Upstream boundary & failure semantics**: Outbound requests set `redirect: "error"`, bound response size to `1 MiB`, redact/refuse credential or secret fields, and forbid `/v1/admin` or admin port `7081`. Returns `503` when executor config is unset, `409` (`EXECUTOR_DELEGATION_BLOCKED`) when cancelled/blocked (`409`/`412`), `429` when rate-limited, and `502`/`504` with `outcome_unknown: true` (`EXECUTOR_OUTCOME_UNKNOWN`) when a `register` call hits timeout, transport failure, `408`, `5xx`, or malformed `200` JSON.
+diff --git a/scripts/fixtures/nuri_delegated_vtxo.json b/scripts/fixtures/nuri_delegated_vtxo.json
+new file mode 100644
+index 0000000..3f9dfe6
+--- /dev/null
++++ b/scripts/fixtures/nuri_delegated_vtxo.json
+@@ -0,0 +1,165 @@
++{
++  "contractName": "NuriDelegatedVtxo",
++  "constructorInputs": [
++    {
++      "name": "owner",
++      "type": "pubkey"
++    },
++    {
++      "name": "clientRecoveryKey",
++      "type": "pubkey"
++    },
++    {
++      "name": "exitDelay",
++      "type": "int"
++    },
++    {
++      "name": "clientRecoveryDelay",
++      "type": "int"
++    },
++    {
++      "name": "renewalWindow",
++      "type": "int"
++    },
++    {
++      "name": "maxFee",
++      "type": "int"
++    }
++  ],
++  "structs": [],
++  "functions": [
++    {
++      "name": "forfeit",
++      "leaves": [
++        {
++          "name": "forfeit",
++          "asm": [
++            "<owner>",
++            "OP_CHECKSIGVERIFY",
++            "<SERVER_KEY>",
++            "OP_CHECKSIG"
++          ],
++          "witness": [
++            {
++              "name": "ownerSig",
++              "type": "signature",
++              "encoding": "schnorr-64"
++            },
++            {
++              "name": "serverSig",
++              "type": "signature",
++              "encoding": "schnorr-64",
++              "injected": true
++            }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "exit",
++      "leaves": [
++        {
++          "name": "exit",
++          "asm": [
++            "<exitDelay>",
++            "OP_CHECKSEQUENCEVERIFY",
++            "OP_DROP",
++            "<owner>",
++            "OP_CHECKSIG"
++          ],
++          "witness": [
++            {
++              "name": "ownerSig",
++              "type": "signature",
++              "encoding": "schnorr-64"
++            }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "clientRecovery",
++      "leaves": [
++        {
++          "name": "clientRecovery",
++          "asm": [
++            "<clientRecoveryDelay>",
++            "OP_CHECKSEQUENCEVERIFY",
++            "OP_DROP",
++            "<clientRecoveryKey>",
++            "OP_CHECKSIG"
++          ],
++          "witness": [
++            {
++              "name": "clientSig",
++              "type": "signature",
++              "encoding": "schnorr-64"
++            }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "renew",
++      "arkade": {
++        "inputs": [],
++        "asm": [
++          "OP_PUSHEXPIRY",
++          "<renewalWindow>",
++          "OP_SUB",
++          "OP_CHECKTIME",
++          "OP_VERIFY",
++          "0x74797065",
++          "OP_INSPECTINTENTMESSAGE",
++          "OP_VERIFY",
++          "0x7265676973746572",
++          "OP_EQUALVERIFY",
++          "0x6f6e636861696e5f6f75747075745f696e6465786573",
++          "OP_INSPECTINTENTMESSAGE",
++          "OP_VERIFY",
++          "0x5b5d",
++          "OP_EQUALVERIFY",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_1SUB",
++          "OP_INSPECTOUTPUTVALUE",
++          "<maxFee>",
++          "OP_ADD",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_INSPECTINPUTVALUE",
++          "OP_GREATERTHANOREQUAL",
++          "OP_VERIFY",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_1SUB",
++          "5",
++          "0",
++          "OP_TUNNEL"
++        ]
++      },
++      "leaves": [
++        {
++          "name": "renew",
++          "asm": [
++            "<SERVER_KEY>",
++            "OP_CHECKSIGVERIFY",
++            "<EMULATOR_KEY:renew>",
++            "OP_CHECKSIG"
++          ],
++          "witness": [
++            {
++              "name": "serverSig",
++              "type": "signature",
++              "encoding": "schnorr-64",
++              "injected": true
++            },
++            {
++              "name": "emulatorSig",
++              "type": "signature",
++              "encoding": "schnorr-64",
++              "injected": true
++            }
++          ]
++        }
++      ]
++    }
++  ]
++}
+diff --git a/scripts/fixtures/nuri_renew.json b/scripts/fixtures/nuri_renew.json
+new file mode 100644
+index 0000000..8de56ef
+--- /dev/null
++++ b/scripts/fixtures/nuri_renew.json
+@@ -0,0 +1,61 @@
++{
++  "format": "template/v1",
++  "type": "proof",
++  "variables": {
++    "owner": "pubkey",
++    "client_recovery_key": "pubkey",
++    "exit_delay": "int",
++    "client_recovery_delay": "int",
++    "renewal_window": "int",
++    "max_fee": "int"
++  },
++  "inputs": [
++    {
++      "name": "funds",
++      "contract": {
++        "definition": {
++          "artifact": "b9c74e801d6ca75320a33f6fa00e66d19a05959d0a6b52b9a2050b1733f98080"
++        },
++        "arguments": {
++          "owner": "<owner>",
++          "clientRecoveryKey": "<client_recovery_key>",
++          "exitDelay": "<exit_delay>",
++          "clientRecoveryDelay": "<client_recovery_delay>",
++          "renewalWindow": "<renewal_window>",
++          "maxFee": "<max_fee>"
++        }
++      },
++      "spend": {
++        "function": "renew",
++        "leaf": "renew"
++      }
++    }
++  ],
++  "outputs": [
++    {
++      "name": "renewed",
++      "value": {
++        "from": "funds"
++      },
++      "locking": {
++        "from": "funds"
++      },
++      "assets": [
++        {
++          "from": "funds"
++        }
++      ]
++    }
++  ],
++  "fees": {
++    "from": "funds",
++    "max": "<max_fee>"
++  },
++  "delegation": {
++    "schedule": {
++      "funds": {
++        "before_expiry_seconds": "<renewal_window>"
++      }
++    }
++  }
++}
+diff --git a/src/ArkadeConfig.js b/src/ArkadeConfig.js
+index 3f544db..5855d94 100644
+--- a/src/ArkadeConfig.js
++++ b/src/ArkadeConfig.js
+@@ -463,6 +463,49 @@ export function loadArkadeConfig(env = process.env) {
+     tokenSeedRaw.fill(0);
+   } catch {}
+ 
++  const ARKADE_EXECUTOR_URL_V4 = parseStringEnv(env.ARKADE_EXECUTOR_URL_V4, "");
++  if (ARKADE_EXECUTOR_URL_V4) {
++    let parsedExecutorUrl;
++    try {
++      parsedExecutorUrl = new URL(ARKADE_EXECUTOR_URL_V4);
++    } catch {
++      throw new Error("Invalid ARKADE_EXECUTOR_URL_V4: malformed URL");
++    }
++    if (parsedExecutorUrl.protocol !== "http:" && parsedExecutorUrl.protocol !== "https:") {
++      throw new Error("ARKADE_EXECUTOR_URL_V4 must use http: or https:");
++    }
++    if (parsedExecutorUrl.username || parsedExecutorUrl.password) {
++      throw new Error("ARKADE_EXECUTOR_URL_V4 must not include credentials");
++    }
++    if (parsedExecutorUrl.search || parsedExecutorUrl.hash) {
++      throw new Error("ARKADE_EXECUTOR_URL_V4 must not include query or fragment");
++    }
++    if (
++      parsedExecutorUrl.port === "7081" ||
++      parsedExecutorUrl.pathname.toLowerCase().includes("/v1/admin")
++    ) {
++      throw new Error("ARKADE_EXECUTOR_URL_V4 must target public ExecutorService gateway, not admin API");
++    }
++  }
++  const ARKADE_EXECUTOR_TEMPLATE_ID_V4 = parseStringEnv(
++    env.ARKADE_EXECUTOR_TEMPLATE_ID_V4,
++    "",
++  ).toLowerCase();
++  if (
++    ARKADE_EXECUTOR_TEMPLATE_ID_V4 &&
++    !/^[0-9a-f]{64}$/.test(ARKADE_EXECUTOR_TEMPLATE_ID_V4)
++  ) {
++    throw new Error("ARKADE_EXECUTOR_TEMPLATE_ID_V4 must be a 64-char hex SHA-256 template ID");
++  }
++  const ARKADE_EXECUTOR_TIMEOUT_MS_V4 = parseIntEnv(
++    env.ARKADE_EXECUTOR_TIMEOUT_MS_V4,
++    "ARKADE_EXECUTOR_TIMEOUT_MS_V4",
++    10_000,
++  );
++  if (ARKADE_EXECUTOR_TIMEOUT_MS_V4 > 120_000) {
++    throw new Error("ARKADE_EXECUTOR_TIMEOUT_MS_V4 must be at most 120000ms");
++  }
++
+   // The delegate worker never signs, so its key is only derived (and held in
+   // RAM) when the worker is explicitly turned on.
+   const DELEGATE_WORKER_ENABLED_V4 = parseBoolEnv(
+@@ -553,5 +596,8 @@ export function loadArkadeConfig(env = process.env) {
+       30_000,
+     ),
+     DELEGATE_SUBMIT_URL_V4: parseStringEnv(env.DELEGATE_SUBMIT_URL_V4, ""),
++    ARKADE_EXECUTOR_URL_V4,
++    ARKADE_EXECUTOR_TEMPLATE_ID_V4,
++    ARKADE_EXECUTOR_TIMEOUT_MS_V4,
+   };
+ }
+diff --git a/src/ArkadeExecutorClient.js b/src/ArkadeExecutorClient.js
+new file mode 100644
+index 0000000..167efcd
+--- /dev/null
++++ b/src/ArkadeExecutorClient.js
+@@ -0,0 +1,658 @@
++import crypto from "node:crypto";
++
++const HEX64_RE = /^[0-9a-f]{64}$/;
++const VAR_KEY_RE = /^[a-z][a-z0-9_]*$/;
++const LOWER_HEX_RE = /^[0-9a-f]*$/;
++const POS_INT_STR_RE = /^[1-9][0-9]*$/;
++const DEFAULT_TIMEOUT_MS = 10000;
++const MAX_TIMEOUT_MS = 120000;
++const MAX_RESPONSE_BYTES = 1048576;
++const SECRET_KEY_RE = /(?:^|_)(?:token|sig_b64u|auth_data|client_data|seed|secret|private|mnemonic|nsec|authorization|cookie|passkey)(?:$|_)/i;
++
++const FORBIDDEN_SECRET_KEYS = new Set([
++  "token",
++  "sig_b64u",
++  "auth_data_b64u",
++  "client_data_b64u",
++  "seed",
++  "secret",
++  "private_key",
++  "privatekey",
++  "mnemonic",
++  "nsec",
++  "authorization",
++  "cookie",
++]);
++
++function makeExecutorError(message, props = {}) {
++  const err = new Error(redactExecutorText(message));
++  Object.assign(err, props);
++  return err;
++}
++
++function isPlainObject(val) {
++  if (!val || typeof val !== "object" || Array.isArray(val)) return false;
++  const proto = Object.getPrototypeOf(val);
++  return proto === Object.prototype || proto === null;
++}
++
++export function redactExecutorText(str) {
++  const raw = String(str ?? "");
++  return raw
++    .replace(/\bBearer\s+[A-Za-z0-9\-._~+/]+=*/gi, "Bearer [REDACTED]")
++    .replace(/\bnsec1[0-9a-z]{20,}\b/gi, "[REDACTED]")
++    .replace(
++      /(["']?(?:token|sig_b64u|auth_data_b64u|client_data_b64u|seed|secret|private_key|privateKey|mnemonic|nsec|authorization|cookie)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;}\]]+)/gi,
++      "$1[REDACTED]"
++    )
++    .replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]{10,})?/g, "[REDACTED]")
++    .replace(/\b[A-Za-z0-9_-]{80,}\b/g, "[REDACTED]");
++}
++
++export function assertNoExecutorSecrets(input, seen = new WeakSet()) {
++  if (!input || typeof input !== "object") return;
++  if (seen.has(input)) return;
++  seen.add(input);
++
++  if (Array.isArray(input)) {
++    for (const item of input) {
++      assertNoExecutorSecrets(item, seen);
++    }
++    return;
++  }
++
++  for (const [key, val] of Object.entries(input)) {
++    const normalized = String(key).toLowerCase();
++    if (
++      FORBIDDEN_SECRET_KEYS.has(normalized) ||
++      FORBIDDEN_SECRET_KEYS.has(key) ||
++      SECRET_KEY_RE.test(key)
++    ) {
++      throw makeExecutorError("Refusing secret or credential field in executor payload", {
++        code: "EXECUTOR_SECRET_FORBIDDEN",
++        status: 400,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++    if (typeof val === "string" && /^nsec1[0-9a-z]{20,}$/i.test(val.trim())) {
++      throw makeExecutorError("Refusing secret value in executor payload", {
++        code: "EXECUTOR_SECRET_FORBIDDEN",
++        status: 400,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++    if (val && typeof val === "object") {
++      assertNoExecutorSecrets(val, seen);
++    }
++  }
++}
++
++export function encodeScriptNumHex(n) {
++  let v;
++  if (typeof n === "bigint") {
++    v = n;
++  } else if (typeof n === "number") {
++    if (!Number.isSafeInteger(n)) {
++      throw new TypeError("Script number must be a safe integer or bigint");
++    }
++    v = BigInt(n);
++  } else {
++    throw new TypeError("Script number must be a safe integer or bigint");
++  }
++
++  if (v === 0n) return "";
++
++  const negative = v < 0n;
++  let abs = negative ? -v : v;
++  const bytes = [];
++  while (abs > 0n) {
++    bytes.push(Number(abs & 0xffn));
++    abs >>= 8n;
++  }
++
++  if ((bytes[bytes.length - 1] & 0x80) !== 0) {
++    bytes.push(negative ? 0x80 : 0x00);
++  } else if (negative) {
++    bytes[bytes.length - 1] |= 0x80;
++  }
++
++  return Buffer.from(bytes).toString("hex");
++}
++
++export function encodeCsvSequenceHex(timelock) {
++  if (!isPlainObject(timelock)) {
++    throw new TypeError("timelock must be an object with { type, value }");
++  }
++  const { type, value } = timelock;
++
++  let intVal;
++  if (typeof value === "bigint") {
++    if (value < 1n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
++      throw new RangeError("timelock value out of range");
++    }
++    intVal = Number(value);
++  } else if (typeof value === "number" && Number.isSafeInteger(value)) {
++    intVal = value;
++  } else {
++    throw new TypeError("timelock value must be a safe integer");
++  }
++
++  if (type === "blocks") {
++    if (intVal < 1 || intVal > 0xffff) {
++      throw new RangeError("CSV block timelock must be between 1 and 65535");
++    }
++    return encodeScriptNumHex(intVal);
++  }
++
++  if (type === "seconds") {
++    if (intVal < 512 || intVal % 512 !== 0) {
++      throw new RangeError("CSV seconds timelock must be >= 512 and an exact multiple of 512");
++    }
++    const units = intVal / 512;
++    if (units < 1 || units > 0xffff) {
++      throw new RangeError("CSV seconds timelock units out of 16-bit BIP-68 range");
++    }
++    const bip68 = (1 << 22) | units;
++    return encodeScriptNumHex(bip68);
++  }
++
++  throw new TypeError('timelock.type must be "blocks" or "seconds"');
++}
++
++export function decodeScriptNumBigInt(hex) {
++  if (typeof hex !== "string" || hex.length % 2 !== 0 || !LOWER_HEX_RE.test(hex)) {
++    throw new TypeError("ScriptNum must be even-length lowercase hex");
++  }
++  if (hex === "") return 0n;
++  if (hex.length > 10) {
++    throw new RangeError("ScriptNum exceeds 5-byte numeric bounds");
++  }
++  const bytes = Buffer.from(hex, "hex");
++  const last = bytes[bytes.length - 1];
++  if ((last & 0x7f) === 0) {
++    if (bytes.length === 1 || (bytes[bytes.length - 2] & 0x80) === 0) {
++      throw new RangeError("Non-minimal ScriptNum encoding");
++    }
++  }
++  const negative = (last & 0x80) !== 0;
++  bytes[bytes.length - 1] &= 0x7f;
++  let abs = 0n;
++  for (let i = bytes.length - 1; i >= 0; i -= 1) {
++    abs = (abs << 8n) | BigInt(bytes[i]);
++  }
++  return negative ? -abs : abs;
++}
++
++export function decodeCsvSequence(hex) {
++  const seq = decodeScriptNumBigInt(hex);
++  if (seq <= 0n || seq > 0x7fffffffn) {
++    throw new RangeError("CSV sequence must be a positive 31-bit BIP-68 integer");
++  }
++  const n = Number(seq);
++  if ((n & (1 << 31)) !== 0) {
++    throw new RangeError("CSV sequence disable flag (bit 31) must not be set");
++  }
++  const allowedMask = (1 << 22) | 0xffff;
++  if ((n & ~allowedMask) !== 0) {
++    throw new RangeError("CSV sequence sets unsupported non-BIP-68 bits");
++  }
++  const units = n & 0xffff;
++  if (units < 1 || units > 0xffff) {
++    throw new RangeError("CSV sequence 16-bit timelock value must be >= 1");
++  }
++  return (n & (1 << 22)) !== 0
++    ? { type: "seconds", value: units * 512 }
++    : { type: "blocks", value: units };
++}
++
++function serializeJcs(value) {
++  if (value === null) return "null";
++  const t = typeof value;
++  if (t === "boolean") return value ? "true" : "false";
++  if (t === "number") {
++    if (!Number.isFinite(value)) {
++      throw new TypeError("Cannot JCS-serialize non-finite number");
++    }
++    if (Object.is(value, -0)) return "0";
++    return JSON.stringify(value);
++  }
++  if (t === "string") {
++    return JSON.stringify(value);
++  }
++  if (Array.isArray(value)) {
++    const items = value.map((el) => (el === undefined || typeof el === "function" || typeof el === "symbol" ? "null" : serializeJcs(el)));
++    return `[${items.join(",")}]`;
++  }
++  if (t === "object") {
++    if (typeof value.toJSON === "function") {
++      return serializeJcs(value.toJSON());
++    }
++    const keys = Object.keys(value).filter((k) => {
++      const v = value[k];
++      return v !== undefined && typeof v !== "function" && typeof v !== "symbol";
++    });
++    keys.sort();
++    const props = keys.map((k) => `${JSON.stringify(k)}:${serializeJcs(value[k])}`);
++    return `{${props.join(",")}}`;
++  }
++  throw new TypeError(`Unsupported type for JCS serialization: ${t}`);
++}
++
++export function computeJcsSha256Hex(doc) {
++  const canonical = serializeJcs(doc);
++  return crypto.createHash("sha256").update(canonical, "utf8").digest("hex");
++}
++
++function parseAndValidateBaseUrl(rawUrl) {
++  const trimmed = String(rawUrl ?? "").trim();
++  if (!trimmed) return "";
++
++  let parsed;
++  try {
++    parsed = new URL(trimmed);
++  } catch {
++    throw makeExecutorError("ARKADE_EXECUTOR_URL_V4 must be a valid URL", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++
++  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
++    throw makeExecutorError("ARKADE_EXECUTOR_URL_V4 must use http: or https:", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++
++  if (parsed.username || parsed.password) {
++    throw makeExecutorError("ARKADE_EXECUTOR_URL_V4 must not contain credentials", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++
++  if (parsed.port === "7081") {
++    throw makeExecutorError("ARKADE_EXECUTOR_URL_V4 must not target admin port 7081", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++
++  const lowerPath = parsed.pathname.toLowerCase();
++  if (lowerPath.includes("/v1/admin")) {
++    throw makeExecutorError("ARKADE_EXECUTOR_URL_V4 must not target /v1/admin", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++
++  if (parsed.search || parsed.hash) {
++    throw makeExecutorError("ARKADE_EXECUTOR_URL_V4 must not include query or hash", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++
++  const normalizedPath = parsed.pathname.replace(/\/+$/, "");
++  return `${parsed.origin}${normalizedPath}`;
++}
++
++function parseAndValidateTemplateId(rawTemplateId) {
++  const trimmed = String(rawTemplateId ?? "").trim();
++  if (!trimmed) return "";
++  if (!HEX64_RE.test(trimmed)) {
++    throw makeExecutorError("ARKADE_EXECUTOR_TEMPLATE_ID_V4 must be 64 lowercase hex chars", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++  return trimmed;
++}
++
++function parseTimeoutMs(rawTimeout) {
++  if (rawTimeout === undefined || rawTimeout === null || rawTimeout === "") {
++    return DEFAULT_TIMEOUT_MS;
++  }
++  const n = Number(rawTimeout);
++  if (!Number.isSafeInteger(n) || n <= 0 || n > MAX_TIMEOUT_MS) {
++    throw makeExecutorError("ARKADE_EXECUTOR_TIMEOUT_MS_V4 must be a positive integer", {
++      code: "EXECUTOR_CONFIG_INVALID",
++      status: 500,
++    });
++  }
++  return n;
++}
++
++function extractRemoteErrorMessage(parsedBody, rawText, status) {
++  if (parsedBody && typeof parsedBody === "object") {
++    const msg = parsedBody.message ?? parsedBody.error ?? parsedBody.detail;
++    if (typeof msg === "string" && msg.trim()) {
++      return redactExecutorText(msg.trim()).slice(0, 300);
++    }
++  }
++  if (typeof rawText === "string" && rawText.trim()) {
++    return redactExecutorText(rawText.trim()).slice(0, 300);
++  }
++  return `Executor HTTP ${status}`;
++}
++
++export function createArkadeExecutorClient({ cfg = {}, fetchImpl = fetch } = {}) {
++  const baseUrl = parseAndValidateBaseUrl(cfg?.ARKADE_EXECUTOR_URL_V4);
++  const defaultTemplateId = parseAndValidateTemplateId(cfg?.ARKADE_EXECUTOR_TEMPLATE_ID_V4);
++  const timeoutMs = parseTimeoutMs(cfg?.ARKADE_EXECUTOR_TIMEOUT_MS_V4);
++  const enabled = Boolean(baseUrl && defaultTemplateId);
++
++  function assertEnabled() {
++    if (!enabled) {
++      throw makeExecutorError("Arkade executor is not configured", {
++        code: "EXECUTOR_NOT_CONFIGURED",
++        status: 503,
++        outcomeUnknown: false,
++      });
++    }
++  }
++
++  async function executeRequest(path, { method = "GET", bodyObj } = {}) {
++    if (typeof fetchImpl !== "function") {
++      throw makeExecutorError("fetch implementation unavailable", {
++        code: "EXECUTOR_UNAVAILABLE",
++        status: 503,
++        outcomeUnknown: false,
++      });
++    }
++
++    const controller = new AbortController();
++    const timer = setTimeout(() => controller.abort(), timeoutMs);
++
++    let res;
++    let rawText = "";
++    try {
++      const headers = { accept: "application/json" };
++      const init = {
++        method,
++        headers,
++        redirect: "error",
++        signal: controller.signal,
++      };
++      if (bodyObj !== undefined) {
++        headers["content-type"] = "application/json";
++        init.body = JSON.stringify(bodyObj);
++      }
++      res = await fetchImpl(`${baseUrl}${path}`, init);
++      const contentLen = Number(res.headers?.get?.("content-length") || 0);
++      if (contentLen > MAX_RESPONSE_BYTES) {
++        throw new Error("Executor response exceeded 1 MiB limit");
++      }
++      rawText = await res.text();
++      if (Buffer.byteLength(rawText, "utf8") > MAX_RESPONSE_BYTES) {
++        throw new Error("Executor response exceeded 1 MiB limit");
++      }
++    } catch (err) {
++      const isAbort = err?.name === "AbortError" || controller.signal.aborted;
++      throw makeExecutorError(
++        isAbort
++          ? `Executor request timed out after ${timeoutMs}ms`
++          : `Executor network error: ${err?.message || "request failed"}`,
++        {
++          code: method === "POST" ? "EXECUTOR_OUTCOME_UNKNOWN" : "EXECUTOR_UPSTREAM_ERROR",
++          status: isAbort ? 504 : 502,
++          outcomeUnknown: method === "POST",
++        }
++      );
++    } finally {
++      clearTimeout(timer);
++    }
++
++    let parsed = null;
++    let jsonValid = false;
++    if (rawText.length > 0) {
++      try {
++        parsed = JSON.parse(rawText);
++        jsonValid = true;
++      } catch {
++        jsonValid = false;
++      }
++    }
++
++    return { res, rawText, parsed, jsonValid };
++  }
++
++  async function getInfo() {
++    assertEnabled();
++    const { res, rawText, parsed, jsonValid } = await executeRequest("/v1/info", { method: "GET" });
++    if (!res.ok) {
++      const msg = extractRemoteErrorMessage(parsed, rawText, res.status);
++      throw makeExecutorError(msg, {
++        code: "EXECUTOR_UPSTREAM_ERROR",
++        status: res.status >= 500 ? res.status : 502,
++        outcomeUnknown: false,
++      });
++    }
++    if (!jsonValid || !parsed || typeof parsed !== "object") {
++      throw makeExecutorError("Executor /v1/info returned invalid JSON", {
++        code: "EXECUTOR_UPSTREAM_ERROR",
++        status: 502,
++        outcomeUnknown: false,
++      });
++    }
++    return parsed;
++  }
++
++  async function registerDelegation({ templateId = defaultTemplateId, variables, expiresAt = 0 } = {}) {
++    assertEnabled();
++
++    if (typeof templateId !== "string" || !HEX64_RE.test(templateId)) {
++      throw makeExecutorError("templateId must be 64 lowercase hex characters", {
++        code: "EXECUTOR_INVALID_ARGUMENT",
++        status: 400,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++
++    if (!isPlainObject(variables)) {
++      throw makeExecutorError("variables must be a plain non-empty object", {
++        code: "EXECUTOR_INVALID_ARGUMENT",
++        status: 400,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++
++    assertNoExecutorSecrets(variables);
++
++    const entries = Object.entries(variables);
++    if (entries.length === 0) {
++      throw makeExecutorError("variables must not be empty", {
++        code: "EXECUTOR_INVALID_ARGUMENT",
++        status: 400,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++
++    const sanitizedVars = {};
++    for (const [k, v] of entries) {
++      if (!VAR_KEY_RE.test(k)) {
++        throw makeExecutorError(`Invalid variable name: ${k}`, {
++          code: "EXECUTOR_INVALID_ARGUMENT",
++          status: 400,
++          outcomeUnknown: false,
++          permanent: true,
++        });
++      }
++      if (typeof v !== "string" || !LOWER_HEX_RE.test(v) || v.length % 2 !== 0) {
++        throw makeExecutorError(`Variable "${k}" must be even-length lowercase hex`, {
++          code: "EXECUTOR_INVALID_ARGUMENT",
++          status: 400,
++          outcomeUnknown: false,
++          permanent: true,
++        });
++      }
++      sanitizedVars[k] = v;
++    }
++
++    if (typeof expiresAt !== "number" || !Number.isSafeInteger(expiresAt) || expiresAt < 0) {
++      throw makeExecutorError("expiresAt must be a non-negative safe integer", {
++        code: "EXECUTOR_INVALID_ARGUMENT",
++        status: 400,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++
++    const payload = {
++      template_id: templateId,
++      variables: sanitizedVars,
++      expires_at: expiresAt,
++    };
++
++    const { res, rawText, parsed, jsonValid } = await executeRequest("/v1/delegation", {
++      method: "POST",
++      bodyObj: payload,
++    });
++
++    if (res.status >= 500 || res.status === 408) {
++      const msg = extractRemoteErrorMessage(parsed, rawText, res.status);
++      throw makeExecutorError(`Executor registration outcome uncertain: ${msg}`, {
++        code: "EXECUTOR_OUTCOME_UNKNOWN",
++        status: res.status >= 500 ? res.status : 504,
++        outcomeUnknown: true,
++      });
++    }
++
++    if (!res.ok) {
++      const msg = extractRemoteErrorMessage(parsed, rawText, res.status);
++      const isBlocked =
++        res.status === 409 ||
++        res.status === 412 ||
++        (res.status === 400 && /\b(blocked|cancelled|canceled|errblocked)\b/i.test(msg));
++
++      if (isBlocked) {
++        throw makeExecutorError(msg, {
++          code: "EXECUTOR_DELEGATION_BLOCKED",
++          status: res.status,
++          outcomeUnknown: false,
++          permanent: true,
++        });
++      }
++
++      throw makeExecutorError(msg, {
++        code: "EXECUTOR_REJECTED",
++        status: res.status,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++
++    if (!jsonValid || !parsed || !isPlainObject(parsed.delegation)) {
++      throw makeExecutorError("Executor registration returned malformed delegation response", {
++        code: "EXECUTOR_OUTCOME_UNKNOWN",
++        status: 504,
++        outcomeUnknown: true,
++      });
++    }
++
++    return { delegation: parsed.delegation };
++  }
++
++  async function getDelegation({ id, address } = {}) {
++    assertEnabled();
++
++    const hasId = id !== undefined && id !== null && id !== "";
++    const hasAddress = address !== undefined && address !== null && address !== "";
++
++    if ((hasId && hasAddress) || (!hasId && !hasAddress)) {
++      throw makeExecutorError("Specify exactly one of id or address", {
++        code: "EXECUTOR_INVALID_ARGUMENT",
++        status: 400,
++        outcomeUnknown: false,
++        permanent: true,
++      });
++    }
++
++    let query;
++    if (hasId) {
++      let idStr;
++      if (typeof id === "number") {
++        if (!Number.isSafeInteger(id) || id < 1) {
++          throw makeExecutorError("Delegation id must be a positive integer", {
++            code: "EXECUTOR_INVALID_ARGUMENT",
++            status: 400,
++            outcomeUnknown: false,
++            permanent: true,
++          });
++        }
++        idStr = String(id);
++      } else if (typeof id === "string" && POS_INT_STR_RE.test(id)) {
++        idStr = id;
++      } else {
++        throw makeExecutorError("Delegation id must be a positive integer", {
++          code: "EXECUTOR_INVALID_ARGUMENT",
++          status: 400,
++          outcomeUnknown: false,
++          permanent: true,
++        });
++      }
++      query = `id=${encodeURIComponent(idStr)}`;
++    } else {
++      if (typeof address !== "string" || address.length === 0 || /[\s\x00-\x1f\x7f]/.test(address)) {
++        throw makeExecutorError("Delegation address must be a valid non-empty string", {
++          code: "EXECUTOR_INVALID_ARGUMENT",
++          status: 400,
++          outcomeUnknown: false,
++          permanent: true,
++        });
++      }
++      assertNoExecutorSecrets({ address });
++      query = `address=${encodeURIComponent(address)}`;
++    }
++
++    const { res, rawText, parsed, jsonValid } = await executeRequest(`/v1/delegation?${query}`, {
++      method: "GET",
++    });
++
++    if (res.status === 404) {
++      const msg = extractRemoteErrorMessage(parsed, rawText, 404);
++      throw makeExecutorError(msg, {
++        code: "EXECUTOR_DELEGATION_NOT_FOUND",
++        status: 404,
++        outcomeUnknown: false,
++      });
++    }
++
++    if (!res.ok) {
++      const msg = extractRemoteErrorMessage(parsed, rawText, res.status);
++      throw makeExecutorError(msg, {
++        code: res.status >= 500 ? "EXECUTOR_UPSTREAM_ERROR" : "EXECUTOR_REJECTED",
++        status: res.status,
++        outcomeUnknown: false,
++      });
++    }
++
++    if (!jsonValid || !parsed || !isPlainObject(parsed.delegation)) {
++      throw makeExecutorError("Executor getDelegation returned invalid payload", {
++        code: "EXECUTOR_UPSTREAM_ERROR",
++        status: 502,
++        outcomeUnknown: false,
++      });
++    }
++
++    return {
++      delegation: parsed.delegation,
++      coins: Array.isArray(parsed.coins) ? parsed.coins : [],
++    };
++  }
++
++  return {
++    enabled,
++    baseUrl,
++    templateId: defaultTemplateId,
++    timeoutMs,
++    getInfo,
++    registerDelegation,
++    getDelegation,
++  };
++}
+diff --git a/src/ArkadeExecutorClient.test.js b/src/ArkadeExecutorClient.test.js
+new file mode 100644
+index 0000000..da7c057
+--- /dev/null
++++ b/src/ArkadeExecutorClient.test.js
+@@ -0,0 +1,505 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import crypto from "node:crypto";
++import http from "node:http";
++import net from "node:net";
++import { spawn } from "node:child_process";
++import { mkdtempSync, readFileSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import path from "node:path";
++import { fileURLToPath } from "node:url";
++
++import { keyAggregate, sortKeys } from "@scure/btc-signer/musig2.js";
++import { buildCosignerAccount, deriveServerPublicKey } from "./ArkadeDerive.js";
++import {
++  assertNoExecutorSecrets,
++  computeJcsSha256Hex,
++  createArkadeExecutorClient,
++  decodeCsvSequence,
++  encodeCsvSequenceHex,
++  encodeScriptNumHex,
++  redactExecutorText,
++} from "./ArkadeExecutorClient.js";
++
++const repoRoot = fileURLToPath(new URL("..", import.meta.url));
++const rpId = "127.0.0.1";
++const origin = "http://127.0.0.1";
++const TEMPLATE_ID = "a".repeat(64);
++const PK_A = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
++const PK_B = "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5";
++
++test("encodeScriptNumHex & encodeCsvSequenceHex cover CScriptNum and BIP-68 rules", () => {
++  const vectors = [
++    [0, ""], [0n, ""], [1, "01"], [16, "10"], [127, "7f"], [128, "8000"],
++    [144, "9000"], [288, "2001"], [500, "f401"], [3600, "100e"],
++    [-1, "81"], [-128, "8080"], [32768n, "008000"],
++  ];
++  for (const [input, hex] of vectors) {
++    assert.equal(encodeScriptNumHex(input), hex, `vector ${input}`);
++  }
++  for (const bad of [1.5, NaN, Infinity, "10", true, null, {}]) {
++    assert.throws(() => encodeScriptNumHex(bad), TypeError);
++  }
++
++  assert.equal(encodeCsvSequenceHex({ type: "blocks", value: 144 }), "9000");
++  assert.equal(encodeCsvSequenceHex({ type: "blocks", value: 65535 }), "ffff00");
++  assert.equal(encodeCsvSequenceHex({ type: "seconds", value: 512 }), "010040");
++  assert.equal(
++    encodeCsvSequenceHex({ type: "seconds", value: 6674432 }),
++    encodeScriptNumHex((1 << 22) | (6674432 / 512)),
++  );
++
++  // BIP-68 multiple-of-512 & range traps
++  for (const badTl of [
++    { type: "seconds", value: 86400 },
++    { type: "seconds", value: 511 },
++    { type: "seconds", value: 0 },
++    { type: "seconds", value: -512 },
++    { type: "seconds", value: 65536 * 512 },
++    { type: "blocks", value: 0 },
++    { type: "blocks", value: 65536 },
++  ]) {
++    assert.throws(() => encodeCsvSequenceHex(badTl), RangeError);
++  }
++  assert.throws(() => encodeCsvSequenceHex({ type: "hours", value: 1 }), TypeError);
++  assert.throws(() => encodeCsvSequenceHex(null), TypeError);
++});
++
++test("computeJcsSha256Hex & Nuri 4-leaf renewal fixtures match RFC-8785 contracts", () => {
++  const docA = { b: [1, -0, true, null], a: "hi" };
++  const docB = { a: "hi", b: [1, 0, true, null], ignored: undefined };
++  assert.equal(computeJcsSha256Hex(docA), computeJcsSha256Hex(docB));
++
++  const artifact = JSON.parse(
++    readFileSync(path.join(repoRoot, "scripts/fixtures/nuri_delegated_vtxo.json"), "utf8"),
++  );
++  const template = JSON.parse(
++    readFileSync(path.join(repoRoot, "scripts/fixtures/nuri_renew.json"), "utf8"),
++  );
++  const artifactId = computeJcsSha256Hex(artifact);
++  const templateId = computeJcsSha256Hex(template);
++
++  assert.equal(artifact.contractName, "NuriDelegatedVtxo");
++  assert.deepEqual(artifact.structs, []);
++  const fnNames = artifact.functions.map((f) => f.name);
++  assert.deepEqual(fnNames, ["forfeit", "exit", "clientRecovery", "renew"]);
++  assert.deepEqual(artifact.functions[0].leaves[0].asm, ["<owner>", "OP_CHECKSIGVERIFY", "<SERVER_KEY>", "OP_CHECKSIG"]);
++  assert.equal(artifact.functions[0].leaves[0].witness[1].injected, true);
++  assert.deepEqual(artifact.functions[2].leaves[0].asm, ["<clientRecoveryDelay>", "OP_CHECKSEQUENCEVERIFY", "OP_DROP", "<clientRecoveryKey>", "OP_CHECKSIG"]);
++  assert.deepEqual(artifact.functions[3].arkade.asm.slice(-5), ["OP_PUSHCURRENTINPUTINDEX", "OP_1SUB", "5", "0", "OP_TUNNEL"]);
++  assert.equal(artifact.functions[3].leaves[0].witness.every((w) => w.injected === true), true);
++  assert.equal(artifactId, "b9c74e801d6ca75320a33f6fa00e66d19a05959d0a6b52b9a2050b1733f98080");
++  assert.equal(template.format, "template/v1");
++  assert.equal(template.type, "proof");
++  assert.equal(template.inputs[0].contract.definition.artifact, artifactId);
++  assert.deepEqual(Object.keys(template.variables).sort(), ["client_recovery_delay", "client_recovery_key", "exit_delay", "max_fee", "owner", "renewal_window"]);
++  assert.deepEqual(template.fees, { from: "funds", max: "<max_fee>" });
++  assert.equal(template.outputs[0].locking.from, "funds");
++  assert.match(templateId, /^[0-9a-f]{64}$/);
++  assert.equal(template.delegation?.schedule?.funds?.before_expiry_seconds, "<renewal_window>");
++  assert.deepEqual(decodeCsvSequence("010040"), { type: "seconds", value: 512 });
++});
++
++test("createArkadeExecutorClient handles public gateway, uncertainty, blocks, and redaction", async () => {
++  assert.throws(() => createArkadeExecutorClient({
++    cfg: { ARKADE_EXECUTOR_URL_V4: "http://127.0.0.1:7081", ARKADE_EXECUTOR_TEMPLATE_ID_V4: TEMPLATE_ID },
++  }), /7081/);
++  assert.throws(() => createArkadeExecutorClient({
++    cfg: { ARKADE_EXECUTOR_URL_V4: "http://127.0.0.1:7080/v1/admin", ARKADE_EXECUTOR_TEMPLATE_ID_V4: TEMPLATE_ID },
++  }), /admin/i);
++
++  const secretTok = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
++  assert.throws(() => assertNoExecutorSecrets({ token: secretTok }), { code: "EXECUTOR_SECRET_FORBIDDEN" });
++  assert.throws(() => assertNoExecutorSecrets({ nested: { x: "nsec1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" } }), {
++    code: "EXECUTOR_SECRET_FORBIDDEN",
++  });
++  assert.equal(redactExecutorText(`Authorization: Bearer ${secretTok}`).includes("eyJ"), false);
++
++  const disabled = createArkadeExecutorClient({ cfg: {} });
++  assert.equal(disabled.enabled, false);
++  await assert.rejects(() => disabled.getInfo(), { code: "EXECUTOR_NOT_CONFIGURED", status: 503 });
++
++  let mode = "ok";
++  const calls = [];
++  const fakeFetch = async (url, init = {}) => {
++    calls.push({ url, method: init.method });
++    if (mode === "hang") {
++      return new Promise((_, reject) => {
++        init.signal.addEventListener("abort", () => {
++          const e = new Error("Aborted");
++          e.name = "AbortError";
++          reject(e);
++        });
++      });
++    }
++    if (mode === "neterr") throw new Error(`socket failed token=${secretTok}`);
++    if (mode === "502") return new Response("upstream bad gateway", { status: 502 });
++    if (mode === "bad200") return new Response(JSON.stringify({ ok: true }), { status: 200 });
++    if (mode === "blocked") {
++      return new Response(JSON.stringify({ message: "ErrBlocked: delegation cancelled" }), { status: 412 });
++    }
++    if (url.endsWith("/v1/info")) return new Response(JSON.stringify({ version: "1.0.0" }), { status: 200 });
++    if (init.method === "POST") {
++      const reqBody = JSON.parse(init.body);
++      return new Response(JSON.stringify({
++        delegation: { id: "42", address: "tark1test", template_id: reqBody.template_id, variables: reqBody.variables },
++      }), { status: 200 });
++    }
++    if (url.includes("id=999")) return new Response(JSON.stringify({ message: "not found" }), { status: 404 });
++    return new Response(JSON.stringify({
++      delegation: { id: "42", address: "tark1test", template_id: TEMPLATE_ID, variables: { owner: "aa" } },
++      coins: [{ txid: "11".repeat(32), vout: 0 }],
++    }), { status: 200 });
++  };
++
++  const client = createArkadeExecutorClient({
++    cfg: {
++      ARKADE_EXECUTOR_URL_V4: "http://127.0.0.1:7080/",
++      ARKADE_EXECUTOR_TEMPLATE_ID_V4: TEMPLATE_ID,
++      ARKADE_EXECUTOR_TIMEOUT_MS_V4: 40,
++    },
++    fetchImpl: fakeFetch,
++  });
++
++  assert.deepEqual(await client.getInfo(), { version: "1.0.0" });
++  const vars = { owner: PK_A, max_fee: "f401" };
++  const r1 = await client.registerDelegation({ variables: vars });
++  const r2 = await client.registerDelegation({ variables: vars });
++  assert.equal(r1.delegation.id, "42");
++  assert.deepEqual(r1, r2);
++
++  const gId = await client.getDelegation({ id: 42 });
++  const gAddr = await client.getDelegation({ address: "tark1test" });
++  assert.equal(gId.coins.length, 1);
++  assert.equal(gAddr.delegation.address, "tark1test");
++  await assert.rejects(() => client.getDelegation({ id: 999 }), { code: "EXECUTOR_DELEGATION_NOT_FOUND", status: 404 });
++  await assert.rejects(() => client.registerDelegation({ variables: { owner: "02ABCD" } }), { status: 400 });
++
++  for (const uncertainMode of ["hang", "neterr", "502", "bad200"]) {
++    mode = uncertainMode;
++    await assert.rejects(
++      () => client.registerDelegation({ variables: vars }),
++      (err) => err.code === "EXECUTOR_OUTCOME_UNKNOWN" && err.outcomeUnknown === true && !err.message.includes("eyJ"),
++    );
++  }
++
++  mode = "blocked";
++  await assert.rejects(() => client.registerDelegation({ variables: vars }), {
++    code: "EXECUTOR_DELEGATION_BLOCKED",
++    outcomeUnknown: false,
++    status: 412,
++  });
++  assert.equal(calls.every((c) => !c.url.includes("/v1/admin") && !c.url.includes("/v1/template")), true);
++});
++
++async function freePort() {
++  return new Promise((resolve, reject) => {
++    const srv = net.createServer();
++    srv.listen(0, "127.0.0.1", () => {
++      const { port } = srv.address();
++      srv.close((err) => (err ? reject(err) : resolve(port)));
++    });
++  });
++}
++
++function makeWallet(credId, clientPk33) {
++  const passkey = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
++  const credPubkeyB64u = passkey.publicKey.export({ type: "spki", format: "der" }).toString("base64url");
++  return { credId, clientPk33, passkey, credPubkeyB64u };
++}
++
++function signWebAuthn(wallet, token, challenge) {
++  const clientData = Buffer.from(
++    JSON.stringify({ type: "webauthn.get", challenge, origin, crossOrigin: false }),
++  );
++  const authData = Buffer.concat([
++    crypto.createHash("sha256").update(rpId).digest(),
++    Buffer.from([0x05]),
++    Buffer.alloc(4, 0),
++  ]);
++  const signed = Buffer.concat([authData, crypto.createHash("sha256").update(clientData).digest()]);
++  const sig = crypto.sign("sha256", signed, wallet.passkey.privateKey);
++  return {
++    token,
++    client_data_b64u: clientData.toString("base64url"),
++    auth_data_b64u: authData.toString("base64url"),
++    sig_b64u: sig.toString("base64url"),
++  };
++}
++
++async function postJson(baseUrl, route, payload) {
++  const res = await fetch(`${baseUrl}${route}`, {
++    method: "POST",
++    headers: { "content-type": "application/json" },
++    body: JSON.stringify(payload),
++  });
++  return { status: res.status, json: await res.json() };
++}
++
++async function getWalletAuth(baseUrl, wallet) {
++  const { status, json } = await postJson(baseUrl, "/arkade/auth", {
++    cred_id_b64u: wallet.credId,
++    cred_pubkey_b64u: wallet.credPubkeyB64u,
++    client_signer_pubkey: wallet.clientPk33,
++  });
++  assert.equal(status, 200);
++  return signWebAuthn(wallet, json.token, json.challenge);
++}
++
++test("live HTTP server routes enforce WebAuthn, wallet binding, anti-IDOR, and timeout uncertainty", async (t) => {
++  const delegations = new Map();
++  let nextId = 1;
++  let stubHang = false;
++  let upstreamCalls = 0;
++
++  const stub = http.createServer((req, res) => {
++    upstreamCalls += 1;
++    if (stubHang) return;
++    const u = new URL(req.url, "http://127.0.0.1");
++    if (req.method === "POST" && u.pathname === "/v1/delegation") {
++      let raw = "";
++      req.on("data", (c) => { raw += c; });
++      req.on("end", () => {
++        const body = JSON.parse(raw);
++        for (const existing of delegations.values()) {
++          if (JSON.stringify(existing.variables) === JSON.stringify(body.variables)) {
++            res.writeHead(200, { "content-type": "application/json" });
++            return res.end(JSON.stringify({ delegation: existing }));
++          }
++        }
++        const id = String(nextId++);
++        const rec = {
++          id,
++          address: `tark1delegation${id}`,
++          template_id: body.template_id,
++          variables: body.variables,
++          expires_at: body.expires_at,
++        };
++        delegations.set(id, rec);
++        res.writeHead(200, { "content-type": "application/json" });
++        res.end(JSON.stringify({ delegation: rec }));
++      });
++      return;
++    }
++    if (req.method === "GET" && u.pathname === "/v1/delegation") {
++      const id = u.searchParams.get("id");
++      const addr = u.searchParams.get("address");
++      const found = id
++        ? delegations.get(id)
++        : [...delegations.values()].find((d) => d.address === addr);
++      if (!found) {
++        res.writeHead(404, { "content-type": "application/json" });
++        return res.end(JSON.stringify({ message: "not found" }));
++      }
++      res.writeHead(200, { "content-type": "application/json" });
++      return res.end(JSON.stringify({ delegation: found, coins: [{ txid: "22".repeat(32), vout: 1 }] }));
++    }
++    res.writeHead(404).end();
++  });
++  await new Promise((r) => stub.listen(0, "127.0.0.1", r));
++  const stubUrl = `http://127.0.0.1:${stub.address().port}`;
++
++  const children = [];
++  const dirs = [];
++  t.after(async () => {
++    for (const c of children) c.kill("SIGTERM");
++    await Promise.all(children.map((c) => new Promise((r) => c.once("exit", r))));
++    await new Promise((r) => stub.close(r));
++    for (const d of dirs) rmSync(d, { recursive: true, force: true });
++  });
++
++  async function bootServer(extraEnv = {}) {
++    const dir = mkdtempSync(path.join(tmpdir(), "arkade-exec-test-"));
++    dirs.push(dir);
++    const port = await freePort();
++    const child = spawn(process.execPath, ["src/ArkadeServer.js"], {
++      cwd: repoRoot,
++      env: {
++        ...process.env,
++        NODE_ENV: "test",
++        ARKADE_ENV_V4: "local",
++        HOST_V4: "127.0.0.1",
++        PORT_V4: String(port),
++        RP_ID_V4: rpId,
++        ORIGIN_V4: origin,
++        ALLOW_ANDROID_ORIGIN_V4: "false",
++        PASSKEY_PUBKEY_POLICY_V4: "hard",
++        TOKEN_SEED_V4: "00".repeat(32),
++        COSIGNER_SEED_V4: "11".repeat(32),
++        COSIGNER_NURI_SERVER_CSV_TYPE_V4: "seconds",
++        COSIGNER_NURI_SERVER_CSV_VALUE_V4: "6674432",
++        ARKADE_DATABASE_PATH_V4: path.join(dir, "arkade.sqlite"),
++        RECOVERY_STORE_PATH_V4: path.join(dir, "recovery.json"),
++        LNURL_STORE_PATH_V4: path.join(dir, "lnurl.json"),
++        LNURL_BASE_URL_V4: `http://127.0.0.1:${port}`,
++        LNURL_DOMAIN_V4: "127.0.0.1",
++        ARKADE_NODE_URL_V4: "http://127.0.0.1:1",
++        BOARDING_ESPLORA_API_URL_V4: "http://127.0.0.1:1",
++        BOARDING_ESPLORA_FALLBACK_API_URL_V4: "off",
++        DELEGATE_WORKER_ENABLED_V4: "false",
++        ...extraEnv,
++      },
++      stdio: ["ignore", "pipe", "pipe"],
++    });
++    children.push(child);
++    const baseUrl = `http://127.0.0.1:${port}`;
++    for (let i = 0; i < 60; i += 1) {
++      try {
++        const res = await fetch(`${baseUrl}/health`);
++        if (res.ok) return baseUrl;
++      } catch {}
++      await new Promise((r) => setTimeout(r, 50));
++    }
++    throw new Error("ArkadeServer failed to boot");
++  }
++
++  const walletA = makeWallet("exec_cred_wallet_a", PK_A);
++  const walletB = makeWallet("exec_cred_wallet_b", PK_B);
++
++  const uncfgBase = await bootServer();
++  const uncfgAuth = await getWalletAuth(uncfgBase, walletA);
++  const uncfgRes = await postJson(uncfgBase, "/arkade/executor/delegation/register", {
++    ...uncfgAuth,
++    exit_delay_csv: { type: "blocks", value: 144 },
++    renewal_window_seconds: 3600,
++    max_fee_sats: 500,
++  });
++  assert.equal(uncfgRes.status, 503);
++
++  const base = await bootServer({
++    ARKADE_EXECUTOR_URL_V4: stubUrl,
++    ARKADE_EXECUTOR_TEMPLATE_ID_V4: TEMPLATE_ID,
++    ARKADE_EXECUTOR_TIMEOUT_MS_V4: "120",
++  });
++
++  // 401 unauthenticated & tampered signature
++  assert.equal((await postJson(base, "/arkade/executor/delegation/register", {})).status, 401);
++  const badAuth = await getWalletAuth(base, walletA);
++  badAuth.sig_b64u = "AA";
++  assert.equal((await postJson(base, "/arkade/executor/delegation/register", badAuth)).status, 401);
++
++  // 401 purpose-scoped lnurl bootstrap token replay
++  const bootCh = await postJson(base, "/arkade/lnurl/register-bootstrap/auth", {
++    username: "execwalleta",
++    cred_id_b64u: walletA.credId,
++    cred_pubkey_b64u: walletA.credPubkeyB64u,
++  });
++  assert.equal(bootCh.status, 200);
++  assert.ok(bootCh.json.token);
++  {
++    const scoped = signWebAuthn(walletA, bootCh.json.token, bootCh.json.challenge);
++    const replay = await postJson(base, "/arkade/executor/delegation/register", {
++      ...scoped,
++      exit_delay_csv: { type: "blocks", value: 144 },
++      renewal_window_seconds: 3600,
++      max_fee_sats: 500,
++    });
++    assert.equal(replay.status, 401);
++  }
++
++  // 403 cross-wallet spoofing on register (0 upstream calls)
++  upstreamCalls = 0;
++  for (const spoof of [{ client_recovery_key: PK_B }, { owner: PK_B }, { variables: { owner: PK_B, exit_delay: "9000", renewal_window: "100e", max_fee: "f401" } }]) {
++    const authA = await getWalletAuth(base, walletA);
++    const res = await postJson(base, "/arkade/executor/delegation/register", {
++      ...authA,
++      ...spoof,
++      exit_delay_csv: { type: "blocks", value: 144 },
++      renewal_window_seconds: 3600,
++      max_fee_sats: 500,
++    });
++    assert.equal(res.status, 403);
++  }
++  assert.equal(upstreamCalls, 0);
++
++  // 200 valid Wallet A registration + status roundtrip
++  const regRes = await postJson(base, "/arkade/executor/delegation/register", {
++    ...(await getWalletAuth(base, walletA)),
++    exit_delay_csv: { type: "blocks", value: 144 },
++    renewal_window_seconds: 3600,
++    max_fee_sats: 500,
++  });
++  assert.equal(regRes.status, 200);
++  const cosignerAcc = buildCosignerAccount({ cosignerSeed: Buffer.from("11".repeat(32), "hex") });
++  const serverCsv = { type: "seconds", value: 6674432 };
++  const derivedA = deriveServerPublicKey({
++    accountPublicKey: cosignerAcc.publicKey,
++    accountChainCode: cosignerAcc.chainCode,
++    clientPk33: PK_A,
++    nuriServerCsv: serverCsv,
++  });
++  const expectedOwnerA = Buffer.from(
++    keyAggregate(sortKeys([Buffer.from(PK_A, "hex"), Buffer.from(derivedA.pub)])).aggPublicKey.toBytes(true),
++  ).toString("hex");
++
++  const delA = regRes.json.delegation;
++  assert.equal(delA.variables.client_recovery_key, PK_A);
++  assert.equal(delA.variables.owner, expectedOwnerA);
++  assert.equal(delA.variables.exit_delay, "9000");
++  assert.equal(delA.variables.client_recovery_delay, encodeCsvSequenceHex(serverCsv));
++
++  // Idempotent re-register returns identical delegation ID
++  const regAgain = await postJson(base, "/arkade/executor/delegation/register", {
++    ...(await getWalletAuth(base, walletA)),
++    exit_delay_csv: { type: "blocks", value: 144 },
++    renewal_window_seconds: 3600,
++    max_fee_sats: 500,
++  });
++  assert.equal(regAgain.status, 200);
++  assert.equal(regAgain.json.delegation.id, delA.id);
++
++  // Rejects BIP-68 CSV bypasses (bare integer exit_delay or weakened client_recovery_delay)
++  const bypassCsv = await postJson(base, "/arkade/executor/delegation/register", {
++    ...(await getWalletAuth(base, walletA)),
++    exit_delay: 86400,
++    renewal_window_seconds: 3600,
++    max_fee_sats: 500,
++  });
++  assert.equal(bypassCsv.status, 400);
++  const weakenRecovery = await postJson(base, "/arkade/executor/delegation/register", {
++    ...(await getWalletAuth(base, walletA)),
++    variables: { exit_delay: "9000", client_recovery_delay: "010040", renewal_window: "100e", max_fee: "f401" },
++  });
++  assert.equal(weakenRecovery.status, 400);
++
++  // Second credential attempting to claim PK_A via /arkade/auth is refused (400)
++  const hijackWallet = makeWallet("rogue_cred_claiming_pk_a", PK_A);
++  const hijackAuth = await postJson(base, "/arkade/auth", {
++    cred_id_b64u: hijackWallet.credId,
++    cred_pubkey_b64u: hijackWallet.credPubkeyB64u,
++    client_signer_pubkey: PK_A,
++  });
++  assert.equal(hijackAuth.status, 400);
++
++  // Status by id, by address, and default caller lookup (no id/address)
++  for (const query of [{ id: delA.id }, { address: delA.address }, {}]) {
++    const statusA = await postJson(base, "/arkade/executor/delegation/status", {
++      ...(await getWalletAuth(base, walletA)),
++      ...query,
++    });
++    assert.equal(statusA.status, 200);
++    assert.equal(statusA.json.delegation.id, delA.id);
++    assert.equal(statusA.json.coins.length, 1);
++  }
++
++  // 403 anti-IDOR when Wallet B queries Wallet A's delegation by id or address
++  for (const query of [{ id: delA.id }, { address: delA.address }]) {
++    const idor = await postJson(base, "/arkade/executor/delegation/status", {
++      ...(await getWalletAuth(base, walletB)),
++      ...query,
++    });
++    assert.equal(idor.status, 403);
++    assert.equal(idor.json.delegation, undefined);
++  }
++
++  // 504 uncertain outcome when upstream executord hangs
++  stubHang = true;
++  const hangRes = await postJson(base, "/arkade/executor/delegation/register", {
++    ...(await getWalletAuth(base, walletB)),
++    exit_delay_csv: { type: "blocks", value: 144 },
++    renewal_window_seconds: 3600,
++    max_fee_sats: 500,
++  });
++  assert.equal(hangRes.status, 504);
++  assert.equal(hangRes.json.outcome_unknown, true);
++});
+diff --git a/src/ArkadeServer.js b/src/ArkadeServer.js
+index d85b1d8..ca8fda8 100644
+--- a/src/ArkadeServer.js
++++ b/src/ArkadeServer.js
+@@ -46,6 +46,14 @@ import { createOfflineClaimWorker } from "./ArkadeOfflineClaim.js";
+ import { createSolverCardRefresher } from "./ArkadeSolverCards.js";
+ import { esploraBases, esploraGet } from "./ArkadeEsplora.js";
+ import { createArkadeNotificationsClient } from "./ArkadeNotifications.js";
++import {
++  assertNoExecutorSecrets,
++  createArkadeExecutorClient,
++  decodeCsvSequence,
++  decodeScriptNumBigInt,
++  encodeCsvSequenceHex,
++  encodeScriptNumHex,
++} from "./ArkadeExecutorClient.js";
+ import { handleEnsGateway } from "./ArkadeEnsGateway.js";
+ import {
+   sseSubscribe,
+@@ -5224,6 +5232,454 @@ async function handleNotificationsBind(req, res, cfg, notifications) {
+   return json(res, 200, withVersionMatrix(cfg, { ok: true, namespace: notifications.namespace }));
+ }
+ 
++const EXECUTOR_ALLOWED_VARIABLE_KEYS = new Set([
++  "owner",
++  "client_recovery_key",
++  "exit_delay",
++  "client_recovery_delay",
++  "renewal_window",
++  "max_fee",
++]);
++const MAX_RENEWAL_WINDOW_SECONDS = 31_536_000n;
++const MAX_DELEGATION_FEE_SATS = 10_000_000n;
++const MAX_RECENT_DELEGATION_REFS = 4096;
++const recentDelegationByOwner = new Map();
++
++function rememberOwnerDelegation(expectedOwnerPk33, delegation) {
++  if (!delegation?.id && !delegation?.address) return;
++  if (recentDelegationByOwner.size >= MAX_RECENT_DELEGATION_REFS && !recentDelegationByOwner.has(expectedOwnerPk33)) {
++    const oldest = recentDelegationByOwner.keys().next().value;
++    if (oldest !== undefined) recentDelegationByOwner.delete(oldest);
++  }
++  recentDelegationByOwner.set(expectedOwnerPk33, {
++    id: delegation.id ?? undefined,
++    address: typeof delegation.address === "string" ? delegation.address : undefined,
++  });
++}
++
++function sanitizeDelegationView(delegation) {
++  const inputs = Array.isArray(delegation.inputs)
++    ? delegation.inputs.slice(0, 8).map((inp) => ({
++        name: String(inp?.name || ""),
++        onchain: Boolean(inp?.onchain),
++        script: typeof inp?.script === "string" ? inp.script : "",
++        tapscripts: Array.isArray(inp?.tapscripts) ? inp.tapscripts.filter((t) => typeof t === "string") : [],
++        locktime: Number(inp?.locktime || 0),
++      }))
++    : [];
++  const rawVars = delegation.variables && typeof delegation.variables === "object" ? delegation.variables : {};
++  const variables = {};
++  for (const k of EXECUTOR_ALLOWED_VARIABLE_KEYS) {
++    if (typeof rawVars[k] === "string") variables[k] = rawVars[k].toLowerCase();
++  }
++  return {
++    id: delegation.id,
++    fingerprint: typeof delegation.fingerprint === "string" ? delegation.fingerprint : "",
++    address: typeof delegation.address === "string" ? delegation.address : "",
++    template_id: String(delegation.template_id ?? delegation.templateId ?? "").toLowerCase(),
++    variables,
++    inputs,
++    stream_id: Number(delegation.stream_id || 0),
++    expires_at: Number(delegation.expires_at || 0),
++    status: typeof delegation.status === "string" ? delegation.status : "active",
++    created_at: Number(delegation.created_at || 0),
++    updated_at: Number(delegation.updated_at || 0),
++  };
++}
++
++function sanitizeCoinsView(coins) {
++  if (!Array.isArray(coins)) return [];
++  return coins.slice(0, 500).map((c) => ({
++    outpoint: typeof c?.outpoint === "string" ? c.outpoint : (c?.txid !== undefined ? `${c.txid}:${c.vout ?? 0}` : ""),
++    input: Number(c?.input || 0),
++    amount: Number(c?.amount || 0),
++    expires_at: Number(c?.expires_at || 0),
++    due: Number(c?.due || 0),
++    status: typeof c?.status === "string" ? c.status : "",
++    spent_by: typeof c?.spent_by === "string" ? c.spent_by : "",
++    confirmations: Number(c?.confirmations || 0),
++  }));
++}
++
++function encodeBoundedScriptIntHex(value, fieldName, minBig, maxBig) {
++  let n;
++  if (typeof value === "number") {
++    if (!Number.isSafeInteger(value)) {
++      throw new Error(`${fieldName} must be a safe integer`);
++    }
++    n = BigInt(value);
++  } else if (typeof value === "string" && /^\d+$/.test(value)) {
++    n = BigInt(value);
++  } else {
++    throw new Error(`${fieldName} must be an integer`);
++  }
++  if (n < minBig || n > maxBig) {
++    throw new Error(`${fieldName} must be between ${minBig} and ${maxBig}`);
++  }
++  return encodeScriptNumHex(n);
++}
++
++function validateBoundedScriptHexVar(hex, fieldName, minBig, maxBig) {
++  const decoded = decodeScriptNumBigInt(hex);
++  if (decoded < minBig || decoded > maxBig) {
++    throw new Error(`${fieldName} out of bounds (${minBig}..${maxBig})`);
++  }
++  return encodeScriptNumHex(decoded);
++}
++
++async function resolveWalletDelegationBinding(body, token, cfg, recoveryStore) {
++  const clientPk33 = getClientSignerFromToken(token);
++  if (recoveryStore && token?.cid) {
++    const stored = await recoveryStore.getByCred(token.cid);
++    if (stored && normalizeHex(stored.clientPk33) !== clientPk33) {
++      const err = new Error("credential bound to a different client key");
++      err.status = 403;
++      throw err;
++    }
++  }
++  const derived = getDerivedServerPublicKey(cfg, clientPk33);
++  const expectedOwnerPk33 = deriveAggregatedPk33(clientPk33, derived.pub);
++
++  const rawVars =
++    body.variables !== undefined && body.variables !== null ? body.variables : {};
++  if (typeof rawVars !== "object" || Array.isArray(rawVars)) {
++    const err = new Error("variables must be an object");
++    err.status = 400;
++    throw err;
++  }
++
++  const suppliedOwners = [body.owner, rawVars.owner].filter(
++    (v) => v !== undefined && v !== null && String(v).trim() !== "",
++  );
++  for (const suppliedOwner of suppliedOwners) {
++    if (normalizeHex(suppliedOwner) !== expectedOwnerPk33) {
++      const err = new Error("wallet ownership mismatch");
++      err.status = 403;
++      throw err;
++    }
++  }
++
++  const suppliedRecoveryKeys = [
++    body.client_recovery_key,
++    body.clientRecoveryKey,
++    rawVars.client_recovery_key,
++    rawVars.clientRecoveryKey,
++  ].filter((v) => v !== undefined && v !== null && String(v).trim() !== "");
++  for (const suppliedKey of suppliedRecoveryKeys) {
++    if (normalizeHex(suppliedKey) !== clientPk33) {
++      const err = new Error("wallet ownership mismatch");
++      err.status = 403;
++      throw err;
++    }
++  }
++
++  if (
++    body.template_id !== undefined &&
++    body.template_id !== null &&
++    String(body.template_id).trim() !== "" &&
++    cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4 &&
++    String(body.template_id).trim().toLowerCase() !== cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4
++  ) {
++    const err = new Error("template_id mismatch");
++    err.status = 403;
++    throw err;
++  }
++
++  return { clientPk33, expectedOwnerPk33, rawVars };
++}
++
++function delegationMatchesBoundWallet(delegation, cfg, expectedOwnerPk33, clientPk33) {
++  if (!delegation || typeof delegation !== "object") return false;
++  const templateId = String(delegation.template_id ?? delegation.templateId ?? "").toLowerCase();
++  const vars = delegation.variables;
++  if (!vars || typeof vars !== "object") return false;
++  const owner = normalizeHex(vars.owner || "");
++  const recoveryKey = normalizeHex(vars.client_recovery_key || "");
++  return (
++    templateId === cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4 &&
++    owner === expectedOwnerPk33 &&
++    recoveryKey === clientPk33
++  );
++}
++
++async function handleExecutorDelegationRegister(req, res, cfg, recoveryStore, executor) {
++  let body;
++  try {
++    body = await parseJson(req);
++  } catch (err) {
++    return json(res, 400, { error: err.message });
++  }
++  if (!body || typeof body !== "object" || Array.isArray(body)) {
++    return json(res, 400, { error: "payload required" });
++  }
++
++  let token;
++  try {
++    token = verifyRequestAuth(body, cfg);
++  } catch (err) {
++    return json(res, 401, { error: err.message });
++  }
++
++  let binding;
++  try {
++    binding = await resolveWalletDelegationBinding(body, token, cfg, recoveryStore);
++  } catch (err) {
++    return json(res, err.status || 400, { error: err.message });
++  }
++
++  if (!executor.enabled) {
++    return json(res, 503, { error: "executor not configured" });
++  }
++
++  const { clientPk33, expectedOwnerPk33, rawVars } = binding;
++  let variables;
++  let expiresAt = 0;
++  try {
++    assertNoExecutorSecrets(rawVars);
++    for (const key of Object.keys(rawVars)) {
++      if (!EXECUTOR_ALLOWED_VARIABLE_KEYS.has(key)) {
++        throw new Error(`unsupported delegation variable: ${key}`);
++      }
++    }
++
++    // Pin client_recovery_delay strictly to deployment CSV policy so callers cannot weaken recovery timelock.
++    const policyRecoveryDelayHex = encodeCsvSequenceHex(cfg.COSIGNER_NURI_SERVER_CSV);
++    let clientRecoveryDelayHex = policyRecoveryDelayHex;
++    if (rawVars.client_recovery_delay !== undefined) {
++      decodeCsvSequence(rawVars.client_recovery_delay);
++      if (rawVars.client_recovery_delay !== policyRecoveryDelayHex) {
++        throw new Error("client_recovery_delay must match server recovery CSV policy");
++      }
++    } else if (body.client_recovery_delay_csv !== undefined) {
++      const encoded = encodeCsvSequenceHex(body.client_recovery_delay_csv);
++      if (encoded !== policyRecoveryDelayHex) {
++        throw new Error("client_recovery_delay_csv must match server recovery CSV policy");
++      }
++    }
++
++    // Strictly validate BIP-68 CSV sequence on exit_delay (never allow bare un-flagged integer seconds!).
++    let exitDelayHex;
++    if (rawVars.exit_delay !== undefined) {
++      const parsedCsv = decodeCsvSequence(rawVars.exit_delay);
++      exitDelayHex = encodeCsvSequenceHex(parsedCsv);
++    } else if (body.exit_delay_csv !== undefined) {
++      exitDelayHex = encodeCsvSequenceHex(body.exit_delay_csv);
++    } else {
++      throw new Error("exit_delay_csv or BIP-68 hex variables.exit_delay is required");
++    }
++
++    const rawRenewalWindow = body.renewal_window_seconds ?? body.renewal_window;
++    let renewalWindowHex;
++    if (rawVars.renewal_window !== undefined) {
++      renewalWindowHex = validateBoundedScriptHexVar(
++        rawVars.renewal_window,
++        "variables.renewal_window",
++        1n,
++        MAX_RENEWAL_WINDOW_SECONDS,
++      );
++    } else if (rawRenewalWindow !== undefined) {
++      renewalWindowHex = encodeBoundedScriptIntHex(
++        rawRenewalWindow,
++        "renewal_window_seconds",
++        1n,
++        MAX_RENEWAL_WINDOW_SECONDS,
++      );
++    } else {
++      throw new Error("renewal_window is required");
++    }
++
++    const rawMaxFee = body.max_fee_sats ?? body.max_fee;
++    let maxFeeHex;
++    if (rawVars.max_fee !== undefined) {
++      maxFeeHex = validateBoundedScriptHexVar(
++        rawVars.max_fee,
++        "variables.max_fee",
++        0n,
++        MAX_DELEGATION_FEE_SATS,
++      );
++    } else if (rawMaxFee !== undefined) {
++      maxFeeHex = encodeBoundedScriptIntHex(
++        rawMaxFee,
++        "max_fee_sats",
++        0n,
++        MAX_DELEGATION_FEE_SATS,
++      );
++    } else {
++      throw new Error("max_fee is required");
++    }
++
++    const rawExpiresAt = body.expires_at ?? 0;
++    if (!Number.isSafeInteger(rawExpiresAt) || rawExpiresAt < 0) {
++      throw new Error("expires_at must be a non-negative safe integer");
++    }
++    expiresAt = rawExpiresAt;
++
++    variables = {
++      owner: expectedOwnerPk33,
++      client_recovery_key: clientPk33,
++      exit_delay: exitDelayHex,
++      client_recovery_delay: clientRecoveryDelayHex,
++      renewal_window: renewalWindowHex,
++      max_fee: maxFeeHex,
++    };
++  } catch (err) {
++    return json(res, 400, { error: err.message, outcome_unknown: false });
++  }
++
++  let result;
++  try {
++    result = await executor.registerDelegation({
++      templateId: cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4,
++      variables,
++      expiresAt,
++    });
++  } catch (err) {
++    logOp("ArkadeServer.executorRegister.err", {
++      code: err.code || "ERR",
++      status: err.status || 0,
++      outcomeUnknown: Boolean(err.outcomeUnknown),
++      cred: truncate(token.cid),
++    });
++    if (err.outcomeUnknown) {
++      const status = err.status === 502 ? 502 : 504;
++      return json(res, status, {
++        error: "executor delegation outcome unknown",
++        code: "EXECUTOR_OUTCOME_UNKNOWN",
++        outcome_unknown: true,
++      });
++    }
++    if (
++      err.code === "EXECUTOR_DELEGATION_BLOCKED" ||
++      err.status === 409 ||
++      err.status === 412
++    ) {
++      return json(res, 409, {
++        error: "delegation cancelled or blocked",
++        code: "EXECUTOR_DELEGATION_BLOCKED",
++        outcome_unknown: false,
++      });
++    }
++    if (err.status === 429) {
++      return json(res, 429, {
++        error: "executor rate limited request",
++        outcome_unknown: false,
++      });
++    }
++    return json(res, 400, {
++      error: "delegation registration rejected by executor",
++      outcome_unknown: false,
++    });
++  }
++
++  const rawDelegation = result?.delegation;
++  if (!delegationMatchesBoundWallet(rawDelegation, cfg, expectedOwnerPk33, clientPk33)) {
++    logOp("ArkadeServer.executorRegister.bindingMismatch", {
++      cred: truncate(token.cid),
++    });
++    return json(res, 502, {
++      error: "upstream executor returned mismatched delegation binding",
++      outcome_unknown: false,
++    });
++  }
++
++  const delegation = sanitizeDelegationView(rawDelegation);
++  rememberOwnerDelegation(expectedOwnerPk33, delegation);
++  logOp("ArkadeServer.executorRegister", {
++    ok: true,
++    cred: truncate(token.cid),
++    delegationId: truncate(delegation.id),
++  });
++  return json(res, 200, withVersionMatrix(cfg, { ok: true, delegation }));
++}
++
++async function handleExecutorDelegationStatus(req, res, cfg, recoveryStore, executor) {
++  let body;
++  try {
++    body = await parseJson(req);
++  } catch (err) {
++    return json(res, 400, { error: err.message });
++  }
++  if (!body || typeof body !== "object" || Array.isArray(body)) {
++    return json(res, 400, { error: "payload required" });
++  }
++
++  let token;
++  try {
++    token = verifyRequestAuth(body, cfg);
++  } catch (err) {
++    return json(res, 401, { error: err.message });
++  }
++
++  let binding;
++  try {
++    binding = await resolveWalletDelegationBinding(body, token, cfg, recoveryStore);
++  } catch (err) {
++    return json(res, err.status || 400, { error: err.message });
++  }
++
++  if (!executor.enabled) {
++    return json(res, 503, { error: "executor not configured" });
++  }
++
++  const hasId = body.id !== undefined && body.id !== null && String(body.id).trim() !== "";
++  let id = hasId ? (typeof body.id === "number" ? body.id : String(body.id).trim()) : undefined;
++  let address =
++    typeof body.address === "string" && body.address.trim() !== ""
++      ? body.address.trim()
++      : undefined;
++  if (id !== undefined && address !== undefined) {
++    return json(res, 400, { error: "specify either id or address, not both" });
++  }
++  if (id === undefined && address === undefined) {
++    const remembered = recentDelegationByOwner.get(binding.expectedOwnerPk33);
++    if (remembered?.address) {
++      address = remembered.address;
++    } else if (remembered?.id !== undefined) {
++      id = remembered.id;
++    } else {
++      return json(res, 404, { error: "delegation not found" });
++    }
++  }
++
++  let result;
++  try {
++    result = await executor.getDelegation({ id, address });
++  } catch (err) {
++    if (err.status === 404 || err.code === "EXECUTOR_DELEGATION_NOT_FOUND") {
++      return json(res, 404, { error: "delegation not found" });
++    }
++    if (err.status === 400 || err.code === "EXECUTOR_INVALID_ARGUMENT") {
++      return json(res, 400, { error: "invalid delegation lookup query" });
++    }
++    logOp("ArkadeServer.executorStatus.err", {
++      code: err.code || "ERR",
++      status: err.status || 0,
++      cred: truncate(token.cid),
++    });
++    return json(res, 502, { error: "executor unavailable" });
++  }
++
++  const rawDelegation = result?.delegation;
++  if (
++    !delegationMatchesBoundWallet(
++      rawDelegation,
++      cfg,
++      binding.expectedOwnerPk33,
++      binding.clientPk33,
++    )
++  ) {
++    logOp("ArkadeServer.executorStatus.forbidden", {
++      cred: truncate(token.cid),
++    });
++    return json(res, 403, { error: "delegation ownership mismatch" });
++  }
++
++  const delegation = sanitizeDelegationView(rawDelegation);
++  const coins = sanitizeCoinsView(result?.coins);
++  rememberOwnerDelegation(binding.expectedOwnerPk33, delegation);
++  return json(res, 200, withVersionMatrix(cfg, { ok: true, delegation, coins }));
++}
++
+ async function handleLnurlBootstrapAuth(req, res, cfg, lnurlStore) {
+   let body;
+   try {
+@@ -6034,6 +6490,7 @@ export function startArkadeServer() {
+   const delegateWorker = createArkadeDelegateWorker({ cfg, delegateStore });
+   const arkadeIndexer = createArkadeIndexerStatusFetcher({ cfg });
+   const notifications = createArkadeNotificationsClient({ cfg });
++  const executor = createArkadeExecutorClient({ cfg });
+   if (cfg.DELEGATE_WORKER_ENABLED_V4) {
+     delegateWorker.start();
+   }
+@@ -6148,6 +6605,12 @@ export function startArkadeServer() {
+       if (req.method === "POST" && routePath === "/arkade/notifications/bind") {
+         return handleNotificationsBind(req, res, cfg, notifications);
+       }
++      if (req.method === "POST" && routePath === "/arkade/executor/delegation/register") {
++        return handleExecutorDelegationRegister(req, res, cfg, recoveryStore, executor);
++      }
++      if (req.method === "POST" && routePath === "/arkade/executor/delegation/status") {
++        return handleExecutorDelegationStatus(req, res, cfg, recoveryStore, executor);
++      }
+       if (req.method === "POST" && routePath === "/arkade/lnurl/register-bootstrap/auth") {
+         return handleLnurlBootstrapAuth(req, res, cfg, lnurlStore);
+       }
+@@ -6239,6 +6702,7 @@ export function startArkadeServer() {
+       delegateFp: cfg.DELEGATE_ACCOUNT_V4?.fingerprint ?? "none",
+       delegateWorker: cfg.DELEGATE_WORKER_ENABLED_V4 ? "enabled" : "disabled",
+       notifications: notifications.enabled ? notifications.baseUrl : "disabled",
++      executor: executor.enabled ? executor.baseUrl : "disabled",
+       recoveryStore: "public_envelope_encrypted_backup",
+       lnurlDomain: cfg.LNURL_DOMAIN,
+       lnurlBase: cfg.LNURL_BASE_URL,
+@@ -6268,6 +6732,7 @@ export function startArkadeServer() {
+     delegateStore,
+     delegateWorker,
+     notifications,
++    executor,
+   };
+ 
+   return server;

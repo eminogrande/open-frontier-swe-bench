@@ -1,0 +1,373 @@
+diff --git a/scripts/fixtures/nuri_delegated_vtxo.json b/scripts/fixtures/nuri_delegated_vtxo.json
+new file mode 100644
+index 0000000..70ceb2d
+--- /dev/null
++++ b/scripts/fixtures/nuri_delegated_vtxo.json
+@@ -0,0 +1,98 @@
++{
++  "contractName": "NuriDelegatedVtxo",
++  "constructorInputs": [
++    { "name": "owner", "type": "pubkey" },
++    { "name": "clientRecoveryKey", "type": "pubkey" },
++    { "name": "exitDelay", "type": "int" },
++    { "name": "clientRecoveryDelay", "type": "int" },
++    { "name": "renewalWindow", "type": "int" },
++    { "name": "maxFee", "type": "int" }
++  ],
++  "structs": [],
++  "functions": [
++    {
++      "name": "forfeit",
++      "leaves": [
++        {
++          "name": "forfeit",
++          "asm": ["<owner>", "OP_CHECKSIGVERIFY", "<SERVER_KEY>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "ownerSig", "type": "signature", "encoding": "schnorr-64" },
++            { "name": "serverSig", "type": "signature", "encoding": "schnorr-64", "injected": true }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "exit",
++      "leaves": [
++        {
++          "name": "exit",
++          "asm": ["<exitDelay>", "OP_CHECKSEQUENCEVERIFY", "OP_DROP", "<owner>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "ownerSig", "type": "signature", "encoding": "schnorr-64" }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "clientRecovery",
++      "leaves": [
++        {
++          "name": "clientRecovery",
++          "asm": ["<clientRecoveryDelay>", "OP_CHECKSEQUENCEVERIFY", "OP_DROP", "<clientRecoveryKey>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "clientSig", "type": "signature", "encoding": "schnorr-64" }
++          ]
++        }
++      ]
++    },
++    {
++      "name": "renew",
++      "arkade": {
++        "inputs": [],
++        "asm": [
++          "OP_PUSHEXPIRY",
++          "<renewalWindow>",
++          "OP_SUB",
++          "OP_CHECKTIME",
++          "OP_VERIFY",
++          "0x74797065",
++          "OP_INSPECTINTENTMESSAGE",
++          "OP_VERIFY",
++          "0x7265676973746572",
++          "OP_EQUALVERIFY",
++          "0x6f6e636861696e5f6f75747075745f696e6465786573",
++          "OP_INSPECTINTENTMESSAGE",
++          "OP_VERIFY",
++          "0x5b5d",
++          "OP_EQUALVERIFY",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_1SUB",
++          "OP_INSPECTOUTPUTVALUE",
++          "<maxFee>",
++          "OP_ADD",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_INSPECTINPUTVALUE",
++          "OP_GREATERTHANOREQUAL",
++          "OP_VERIFY",
++          "OP_PUSHCURRENTINPUTINDEX",
++          "OP_1SUB",
++          "5",
++          "0",
++          "OP_TUNNEL"
++        ]
++      },
++      "leaves": [
++        {
++          "name": "renew",
++          "asm": ["<SERVER_KEY>", "OP_CHECKSIGVERIFY", "<EMULATOR_KEY:renew>", "OP_CHECKSIG"],
++          "witness": [
++            { "name": "serverSig", "type": "signature", "encoding": "schnorr-64", "injected": true },
++            { "name": "emulatorSig", "type": "signature", "encoding": "schnorr-64", "injected": true }
++          ]
++        }
++      ]
++    }
++  ]
++}
+diff --git a/src/ArkadeExecutorClient.js b/src/ArkadeExecutorClient.js
+new file mode 100644
+index 0000000..8d9daec
+--- /dev/null
++++ b/src/ArkadeExecutorClient.js
+@@ -0,0 +1,263 @@
++import { createHash } from "node:crypto";
++
++const DEFAULT_TIMEOUT_MS = 10_000;
++const SENSITIVE_FIELD = /secret|token|seed/i;
++
++function jcs(value, seen = new WeakSet()) {
++  if (value === null) return "null";
++  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
++  if (typeof value === "number") {
++    if (!Number.isFinite(value)) throw new Error("JCS requires finite numbers");
++    return JSON.stringify(value);
++  }
++  if (Array.isArray(value)) {
++    if (seen.has(value)) throw new Error("JCS requires acyclic JSON");
++    seen.add(value);
++    const out = `[${value.map((item) => jcs(item, seen)).join(",")}]`;
++    seen.delete(value);
++    return out;
++  }
++  if (typeof value === "object") {
++    if (seen.has(value)) throw new Error("JCS requires acyclic JSON");
++    seen.add(value);
++    const out = `{${Object.keys(value).sort().map((key) => {
++      if (value[key] === undefined) throw new Error("JCS requires JSON values");
++      return `${JSON.stringify(key)}:${jcs(value[key], seen)}`;
++    }).join(",")}}`;
++    seen.delete(value);
++    return out;
++  }
++  throw new Error("JCS requires JSON values");
++}
++
++export function computeJcsSha256Hex(doc) {
++  return createHash("sha256").update(jcs(doc), "utf8").digest("hex");
++}
++
++export function encodeScriptNumHex(n) {
++  if (typeof n === "number" && !Number.isSafeInteger(n)) {
++    throw new Error("script number must be a safe integer");
++  }
++  if (typeof n !== "number" && typeof n !== "bigint") {
++    throw new Error("script number must be an integer");
++  }
++  let value = BigInt(n);
++  if (value === 0n) return "";
++  const negative = value < 0n;
++  let remaining = negative ? -value : value;
++  const bytes = [];
++  while (remaining > 0n) {
++    bytes.push(Number(remaining & 0xffn));
++    remaining >>= 8n;
++  }
++  if (bytes[bytes.length - 1] & 0x80) {
++    bytes.push(negative ? 0x80 : 0x00);
++  } else if (negative) {
++    bytes[bytes.length - 1] |= 0x80;
++  }
++  return Buffer.from(bytes).toString("hex");
++}
++
++export function encodeCsvSequenceHex(timelock) {
++  if (!timelock || typeof timelock !== "object" || Array.isArray(timelock)) {
++    throw new Error("CSV timelock must be an object");
++  }
++  const type = String(timelock.type || "").toLowerCase();
++  if (type !== "blocks" && type !== "seconds") {
++    throw new Error("CSV timelock type must be blocks or seconds");
++  }
++  const raw = timelock.value;
++  if (typeof raw === "bigint") {
++    if (raw < 0n || raw > 0xffffn) throw new Error("CSV value out of range");
++  }
++  if ((typeof raw !== "number" && typeof raw !== "bigint") ||
++      (typeof raw === "number" && (!Number.isSafeInteger(raw) || raw < 0 || raw > 0xffff))) {
++    throw new Error("CSV value must be an unsigned 16-bit integer");
++  }
++  const value = Number(raw);
++  if (type === "seconds" && value % 512 !== 0) {
++    throw new Error("CSV seconds must be a multiple of 512");
++  }
++  const sequence = type === "blocks" ? value : (1 << 22) | (value / 512);
++  return encodeScriptNumHex(sequence);
++}
++
++function sensitiveKey(key) {
++  return SENSITIVE_FIELD.test(String(key));
++}
++
++function assertNoSensitiveFields(value, seen = new WeakSet()) {
++  if (!value || typeof value !== "object") return;
++  if (seen.has(value)) throw new Error("executor payload must be acyclic");
++  seen.add(value);
++  for (const [key, child] of Object.entries(value)) {
++    if (sensitiveKey(key)) throw new Error("sensitive executor fields are forbidden");
++    assertNoSensitiveFields(child, seen);
++  }
++  seen.delete(value);
++}
++
++function redact(value) {
++  if (Array.isArray(value)) return value.map(redact);
++  if (!value || typeof value !== "object") return value;
++  return Object.fromEntries(Object.entries(value).map(([key, child]) => [
++    key,
++    sensitiveKey(key) ? "[redacted]" : redact(child),
++  ]));
++}
++
++function makeError(message, { code, status, outcomeUnknown = false, timeout = false } = {}) {
++  const error = new Error(message);
++  error.code = code;
++  error.status = status;
++  error.outcomeUnknown = outcomeUnknown;
++  error.timeout = timeout;
++  error.executorError = true;
++  return error;
++}
++
++function normalizeBaseUrl(value) {
++  const text = String(value || "").trim().replace(/\/+$/, "");
++  if (!text) return "";
++  let url;
++  try {
++    url = new URL(text);
++  } catch {
++    throw new Error("invalid executor URL");
++  }
++  let pathname;
++  try {
++    pathname = decodeURIComponent(url.pathname).toLowerCase();
++  } catch {
++    throw new Error("invalid executor URL");
++  }
++  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password ||
++      url.search || url.hash || url.port === "7081" ||
++      /(^|\/)v1\/(admin|artifact|template)(\/|$)/.test(pathname)) {
++    throw new Error("executor URL must use the public gateway");
++  }
++  return text;
++}
++
++function normalizeVariables(variables) {
++  if (!variables || typeof variables !== "object" || Array.isArray(variables)) {
++    throw new Error("executor variables must be an object");
++  }
++  return Object.fromEntries(Object.entries(variables).map(([key, value]) => {
++    if (typeof value !== "string" || !/^(?:[0-9a-f]{2})+$/.test(value)) {
++      throw new Error("executor variable values must be lowercase hex");
++    }
++    return [key, value];
++  }));
++}
++
++export function createArkadeExecutorClient({ cfg, fetchImpl = fetch } = {}) {
++  const baseUrl = normalizeBaseUrl(cfg?.ARKADE_EXECUTOR_URL_V4);
++  const configuredTemplateId = String(cfg?.ARKADE_EXECUTOR_TEMPLATE_ID_V4 || "").trim();
++  const parsedTimeout = Number(cfg?.ARKADE_EXECUTOR_TIMEOUT_MS_V4 ?? DEFAULT_TIMEOUT_MS);
++  const timeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0
++    ? Math.max(1, Math.trunc(parsedTimeout))
++    : DEFAULT_TIMEOUT_MS;
++  const enabled = Boolean(baseUrl && configuredTemplateId);
++
++  async function request(path, { method = "GET", payload, mutation = false } = {}) {
++    if (!enabled) throw makeError("executor not configured", { code: "EXECUTOR_DISABLED", status: 503 });
++    if (payload !== undefined) assertNoSensitiveFields(payload);
++    const controller = new AbortController();
++    const timer = setTimeout(() => controller.abort(), timeoutMs);
++    try {
++      const response = await fetchImpl(`${baseUrl}${path}`, {
++        method,
++        headers: payload === undefined ? {} : { "content-type": "application/json" },
++        body: payload === undefined ? undefined : JSON.stringify(payload),
++        signal: controller.signal,
++      });
++      if (!response.ok) {
++        const status = Number(response.status || 0);
++        const upstreamBody = status >= 400 && status < 500
++          ? await response.text().catch(() => "")
++          : "";
++        if (mutation && (status === 408 || status >= 500 || status < 400)) {
++          throw makeError("executor registration outcome unknown", {
++            code: "EXECUTOR_OUTCOME_UNKNOWN",
++            status: status === 408 ? 504 : 502,
++            outcomeUnknown: true,
++            timeout: status === 408,
++          });
++        }
++        if (status >= 500 || status < 400) {
++          throw makeError("executor unavailable", { code: "EXECUTOR_UNAVAILABLE", status: 502 });
++        }
++        const blocked = /errblocked|operator cancelled|delegation[^\n]*cancelled|cancelled[^\n]*delegation|delegation blocked/i.test(upstreamBody);
++        throw makeError(blocked ? "delegation blocked" : "executor request rejected", {
++          code: blocked ? "ErrBlocked" : "EXECUTOR_REJECTED",
++          status,
++        });
++      }
++      try {
++        return redact(await response.json());
++      } catch {
++        if (mutation) {
++          throw makeError("executor registration outcome unknown", {
++            code: "EXECUTOR_OUTCOME_UNKNOWN",
++            status: 502,
++            outcomeUnknown: true,
++          });
++        }
++        throw makeError("executor returned invalid JSON", { code: "EXECUTOR_UNAVAILABLE", status: 502 });
++      }
++    } catch (error) {
++      if (error?.executorError) throw error;
++      const timedOut = controller.signal.aborted;
++      if (mutation) {
++        throw makeError(timedOut ? "executor registration timed out" : "executor registration outcome unknown", {
++          code: "EXECUTOR_OUTCOME_UNKNOWN",
++          status: timedOut ? 504 : 502,
++          outcomeUnknown: true,
++          timeout: timedOut,
++        });
++      }
++      throw makeError(timedOut ? "executor request timed out" : "executor unavailable", {
++        code: timedOut ? "EXECUTOR_TIMEOUT" : "EXECUTOR_UNAVAILABLE",
++        status: timedOut ? 504 : 502,
++        timeout: timedOut,
++      });
++    } finally {
++      clearTimeout(timer);
++    }
++  }
++
++  async function getInfo() {
++    return request("/v1/info");
++  }
++
++  async function registerDelegation({ templateId = configuredTemplateId, variables, expiresAt = 0 } = {}) {
++    const id = String(templateId || "").trim();
++    if (!id) throw new Error("templateId required");
++    if (!Number.isSafeInteger(expiresAt) || expiresAt < 0) {
++      throw new Error("expiresAt must be a non-negative integer");
++    }
++    return request("/v1/delegation", {
++      method: "POST",
++      mutation: true,
++      payload: { templateId: id, variables: normalizeVariables(variables), expiresAt },
++    });
++  }
++
++  async function getDelegation({ id, address } = {}) {
++    const hasId = id !== undefined && id !== null && String(id).trim() !== "";
++    const hasAddress = address !== undefined && address !== null && String(address).trim() !== "";
++    if (hasId === hasAddress) throw new Error("exactly one of id or address is required");
++    const query = new URLSearchParams();
++    if (hasId) {
++      const normalized = String(id).trim();
++      if (!/^[1-9][0-9]*$/.test(normalized)) throw new Error("delegation id must be a positive integer");
++      query.set("id", normalized);
++    } else {
++      query.set("address", String(address).trim());
++    }
++    return request(`/v1/delegation?${query.toString()}`);
++  }
++
++  return { enabled, getInfo, registerDelegation, getDelegation };
++}

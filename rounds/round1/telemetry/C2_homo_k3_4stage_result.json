@@ -1,0 +1,71 @@
+{
+  "id": "C2_homo_k3_4stage",
+  "label": "Homogeneous 4-Stage: k3.1-pro -> k3.1-pro -> k3.1-pro -> k3.1-pro",
+  "mode": "pipeline",
+  "wall_s": 1401.85,
+  "total_tokens": 2266663,
+  "output_tokens": 34618,
+  "reasoning_tokens": 19444,
+  "total_turns": 44,
+  "total_tool_calls": 134,
+  "added_loc": 344,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "k3.1-pro",
+      "rc": 0,
+      "elapsed_s": 342.97,
+      "turns": 6,
+      "tool_calls": 20,
+      "total_tokens": 119522,
+      "input_tokens": 110247,
+      "output_tokens": 9275,
+      "reasoning_tokens": 7010,
+      "text": "**Atomic blueprint \u2014 current line anchors; no edits made.**\n\n1. **Fixtures + executor client.** Create both JSON fixtures exactly as specified: four leaves, signature injection flags, renew covenant/intent/value/tunnel clauses, template outputs/fees/delegation. Set `nuri_renew.json.artifact` to `computeJcsSha256Hex(parsed nuri_delegated_vtxo.json)`; canonicalize with RFC-8785, then SHA-256 UTF-8 bytes\u2014not existing `stableJson`. New `src/ArkadeExecutorClient.js`: export `computeJcsSha256Hex`, `encodeScriptNumHex`, `encodeCsvSequenceHex`, and `createArkadeExecutorClient`. CScriptNum must handle zero, little-endian minimality, and positive/negative sign-byte padding. CSV uses `blocks ? value : (1 << 22) | (seconds / 512)` before CScriptNum encoding; reject negatives, values `>0xffff`, non-512-multiple seconds, and bit-31/disable-flag inputs. Reuse the enabled/AbortController pattern at `src/ArkadeNotifications.js:49-90` (no edit there), but never log upstream bodies. Expose only info/register/get; recursively reject/redact secret/token/seed fields. Preserve deterministic 4xx/`ErrBlocked`; mark POST timeout/network/5xx as `EXECUTOR_OUTCOME_UNKNOWN`, `outcomeUnknown=true`; duplicate-active registration returns the active delegation. Never call admin, artifact/template mutations, or port 7081.\n\n2. **Config + authenticated routes.** Add executor URL/template/10-second timeout parsing after `src/ArkadeConfig.js:357-361`, return beside `ARKADE_EMULATOR_URL` at `507-510`; enabled only when URL and template exist. Leave `DELEGATE_WORKER_ENABLED_V4` (`468-479`) untouched. Import/instantiate the client near `src/ArkadeServer.js:49` and `6035-6037`; add handlers before `5171`, dispatch near `6148`, using `parseJson` (`231`), `json` (`212`), and auth error shape from `5171-5185`. Reuse `verifyRequestAuth` (`2440`), `getClientSignerFromToken` (`4196`), `getDerivedServerPublicKey` (`2768`), and `deriveAggregatedPk33` (`288`); use `derived.pub`\u2014the existing shape\u2014not `.pub33`. Allow only the six template variables; reject supplied owner/recovery mismatches with `403`, then overwrite both from auth. Status validates returned template ID and both wallet keys before disclosure; locator-less status resolves through idempotent wallet-bound registration/query. Return `401` auth failures, `403` spoof/IDOR, `503` disabled, `504` timeout and `502` network/5xx with `outcome_unknown:true`; sanitize all logs/errors.\n\n3. **Docs + tests.** Add an executor section before `ENDPOINTS.md:80`, documenting routes, wallet binding, uncertain outcomes, and public-gateway-only trust boundary; retain removed-route warning at line 7. In `src/ArkadeExecutorClient.test.js`, cover encoding boundaries, 512-second trap, JCS fixture linkage/four leaves, idempotency, timeout, cancellation, redaction, plus live `startArkadeServer`/stub-executord tests for `401`, both `403` spoof cases, status IDOR, and valid roundtrip. Run `node --test src/ArkadeExecutorClient.test.js`.",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "k3.1-pro",
+      "rc": -1,
+      "elapsed_s": 540.03,
+      "turns": 19,
+      "tool_calls": 56,
+      "total_tokens": 784733,
+      "input_tokens": 770208,
+      "output_tokens": 14525,
+      "reasoning_tokens": 6211,
+      "text": "Implementing fixtures and client now, then route wiring.",
+      "stderr": "TIMEOUT after 540s",
+      "stage": "worker"
+    },
+    {
+      "model": "k3.1-pro",
+      "rc": 0,
+      "elapsed_s": 158.63,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 9754,
+      "input_tokens": 6388,
+      "output_tokens": 3366,
+      "reasoning_tokens": 3194,
+      "text": "- Missing `scripts/fixtures/nuri_renew.json`: no renewal template, delegation schedule, or JCS SHA-256 artifact reference.\n- Missing `src/ArkadeServer.js` routes, `src/ArkadeConfig.js` settings, and `ENDPOINTS.md` documentation. Wallet binding, spoofing/IDOR protections, and authenticated registration/status are unimplemented. `src/ArkadeExecutorClient.test.js` is also absent, confirmed by `rc=1`.\n- `src/ArkadeExecutorClient.js`: `encodeCsvSequenceHex()` applies the 16-bit limit to raw seconds before division by 512. BIP-68 limits the shifted value, so valid seconds through `0xffff * 512` are wrongly rejected.",
+      "stderr": "",
+      "stage": "reviewer"
+    },
+    {
+      "model": "k3.1-pro",
+      "rc": -1,
+      "elapsed_s": 360.02,
+      "turns": 18,
+      "tool_calls": 58,
+      "total_tokens": 1352654,
+      "input_tokens": 1345202,
+      "output_tokens": 7452,
+      "reasoning_tokens": 3029,
+      "text": "I found all three findings valid. I\u2019m wiring authenticated renewal registration/status against the stored wallet identity, then adding regression tests.",
+      "stderr": "TIMEOUT after 360s",
+      "stage": "orchestrator_fix"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "pipeline_id": "GOLD_carbon_fable",
+  "orchestrator": "Goose (self-orchestrated, parallel decomposition)",
+  "workers": [
+    {
+      "role": "Worker A (Fixtures + ArkadeExecutorClient.js)",
+      "model": "nous/google/gemini-4-carbon",
+      "wall_s": 96.64
+    },
+    {
+      "role": "Worker B (ArkadeConfig.js + ArkadeServer.js + ENDPOINTS.md)",
+      "model": "nous/google/gemini-4-carbon",
+      "wall_s": 89.98
+    },
+    {
+      "role": "Worker C (ArkadeExecutorClient.test.js)",
+      "model": "nous/google/gemini-4-carbon",
+      "wall_s": 87.86
+    }
+  ],
+  "parallel_worker_wall_s": 96.64,
+  "reviewer": "nous/anthropic/claude-fable-5.2",
+  "fable_v1_score_100": 88,
+  "fable_v1_approved": false,
+  "fable_v1_blockers_fixed": 3,
+  "fable_final_score_100": 95,
+  "fable_final_approved": true,
+  "deterministic_gates": "7/7",
+  "patch_bytes": 73524
+}

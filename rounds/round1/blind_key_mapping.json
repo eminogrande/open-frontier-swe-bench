@@ -1,0 +1,8 @@
+{
+  "CANDIDATE_A": "C5_hetero_nem_ds_k3",
+  "CANDIDATE_B": "C4_hetero_glm_kimi_k3",
+  "CANDIDATE_C": "C1_solo_k3_max",
+  "CANDIDATE_D": "C3_hetero_k3_ds_glm",
+  "CANDIDATE_E": "C2_homo_k3_4stage",
+  "CANDIDATE_F": "C6_solo_deepseek_v4_1"
+}

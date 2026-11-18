@@ -1,0 +1,61 @@
+```json
+{
+  "scores": {
+    "CANDIDATE_A": {
+      "correctness_25": 8,
+      "security_25": 9,
+      "craft_brevity_25": 12,
+      "tests_docs_25": 12,
+      "total_100": 41,
+      "key_strengths": "Passes 4/7 gates (own tests, uncertain-outcome handling, no regression, docs/no admin leak). Correct minimal encodeScriptNumHex. Compact client with AbortController timeout and outcomeUnknown classification. Concise ENDPOINTS.md covering binding, 503/504/409 and the admin boundary. Has a live HTTP test harness with a stub executord.",
+      "flaws_found": "Fails G2, G3 and G5. Artifact is not valid artifact v1: `functions` is an object rather than an array of leaves, and the renew script uses invented opcodes (OP_ADD_OUTPUT_VALUE, OP_GREATER_THAN_OR_EQUAL_INPUT_VALUE, OP_PUSHBYTES_*) merged into one script. Template schema is wrong (top-level `artifact`/`spending`, `outputs` as an object, no inputs/contract arguments). encodeCsvSequenceHex omits the BIP-68 bit-22 seconds flag and emits fixed 2-byte LE instead of going through CScriptNum, so 512s gives `0100` and 0 blocks gives `0000`; its tests cement the wrong values. The JCS hash therefore binds an invalid artifact. Live auth/IDOR gate failed. Every 400 is treated as blocked, and GET 5xx is labelled outcome-unknown. Adds three unrequested config vars. No template ID or URL validation."
+    },
+    "CANDIDATE_B": {
+      "correctness_25": 0,
+      "security_25": 0,
+      "craft_brevity_25": 0,
+      "tests_docs_25": 0,
+      "total_100": 0,
+      "key_strengths": "None; the only gate passed (no regression) is trivially true for an empty diff.",
+      "flaws_found": "Empty diff. No fixtures, client, routes, tests or docs. 1/7 gates."
+    },
+    "CANDIDATE_C": {
+      "correctness_25": 0,
+      "security_25": 0,
+      "craft_brevity_25": 0,
+      "tests_docs_25": 0,
+      "total_100": 0,
+      "key_strengths": "None; the only gate passed (no regression) is trivially true for an empty diff.",
+      "flaws_found": "Empty diff. No fixtures, client, routes, tests or docs. 1/7 gates."
+    },
+    "CANDIDATE_D": {
+      "correctness_25": 23,
+      "security_25": 22,
+      "craft_brevity_25": 21,
+      "tests_docs_25": 22,
+      "total_100": 88,
+      "key_strengths": "7/7 gates. Artifact is identical to gold, with the same JCS ID b9c74e80… referenced by the template. Correct CScriptNum and BIP-68 encoding (bit 22, 512s units, 16-bit range). Strict JCS with cycle detection. Timeout is raced so a fetch that ignores the signal is still bounded. Clear outcomeUnknown vs ErrBlocked vs rejected classification. Template ID validated as 64-hex in config. Live HTTP auth/IDOR gate passes. Crisp ENDPOINTS.md; a 586-line test file.",
+      "flaws_found": "Secret-named variables are silently dropped rather than refused. The network error message embeds the raw cause text. No config guard against port 7081, /v1/admin or credentials in the URL, and no response size cap or `redirect: \"error\"`. No protojson camelCase normalisation of upstream responses, which is fragile against a real gateway. Blocked detection by regex on body text is heuristic. Template adds `index` and `packets` beyond the spec (the compiler gate accepts them). Unrequested CHANGELOG and .env.example edits."
+    },
+    "CANDIDATE_E": {
+      "correctness_25": 8,
+      "security_25": 6,
+      "craft_brevity_25": 9,
+      "tests_docs_25": 0,
+      "total_100": 23,
+      "key_strengths": "Artifact fixture matches the gold 4-leaf structure. Correct CScriptNum and BIP-68 encoders. Strict JCS. Client refuses sensitive fields and rejects port 7081, admin/artifact/template paths and URL credentials. Outcome-unknown applies only to the mutation, including 408 and malformed 200 JSON.",
+      "flaws_found": "2/7 gates. Missing nuri_renew.json, the ArkadeConfig changes, both server routes, the test file and ENDPOINTS.md, so there is no wallet binding or IDOR protection at all. POST body uses camelCase `templateId`/`expiresAt` instead of `template_id`/`expires_at`. The variable regex rejects the empty string, so a valid ScriptNum zero (for example max_fee 0) cannot be registered. Seconds above 65535 are rejected before dividing by 512, so the valid seconds range is wrongly capped. Fails own-tests, fixture, encoding and docs gates."
+    },
+    "CANDIDATE_F": {
+      "correctness_25": 24,
+      "security_25": 23,
+      "craft_brevity_25": 21,
+      "tests_docs_25": 23,
+      "total_100": 91,
+      "key_strengths": "7/7 gates. Artifact identical to gold with the correct JCS ID in the template. Correct CScriptNum and BIP-68 encoding. JCS handles undefined the way JSON does. Normalises protojson camelCase (templateId, clientRecoveryKey and so on) so template/owner binding checks hold whichever casing upstream uses. Handles 409/412 blocked and returns the active delegation on idempotent replay. Timeout is raced. Redaction covers non-string values. Live HTTP auth/IDOR gate passes. Largest test file (611 lines) and concise docs.",
+      "flaws_found": "Secret-named variables are silently dropped rather than refused. The unreachable-error message includes the raw cause text. No config guard against port 7081, /v1/admin or URL credentials, and no response size cap or `redirect: \"error\"`. The normalisation maps and duplicated coin-mapping code add some bulk. Blocked detection by regex on body text is heuristic. Template adds `index` and `packets` beyond the spec. Unrequested .env.example edit."
+    }
+  },
+  "ranking": ["CANDIDATE_F", "CANDIDATE_D", "CANDIDATE_A", "CANDIDATE_E", "CANDIDATE_B", "CANDIDATE_C"]
+}
+```

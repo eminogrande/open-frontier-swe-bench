@@ -1,0 +1,17 @@
+```json
+{
+  "approved": false,
+  "score_100": 88,
+  "must_fix": [
+    "BIP-68 trap bypass in `handleExecutorDelegationRegister`: raw `variables.exit_delay` / `variables.client_recovery_delay` hex and integer `body.exit_delay` skip `encodeCsvSequenceHex` (e.g. `exit_delay: 86400` encodes as a block-type CSV, no bit 22, no `% 512` check). Caller can also override `client_recovery_delay` below `cfg.COSIGNER_NURI_SERVER_CSV`. Fix: accept only `{type,value}` via `encodeCsvSequenceHex`, pin `client_recovery_delay` to cfg, drop raw-hex variable passthrough, require `renewal_window > 0`, bound `max_fee` / `renewal_window`.",
+    "Upstream boundary and leak: `executeRequest` follows redirects, so the gateway can 30x to `/v1/admin` or `:7081` (307/308 re-send the POST body); add `redirect: \"error\"`. `ArkadeConfig.js` throws `Invalid ARKADE_EXECUTOR_URL_V4: ${url}`, echoing the raw value, including any embedded credentials, into logs; drop the value.",
+    "Wallet binding unproven: code calls `deriveAggregatedPk33(clientPk33, derived.pub)` but spec says `derived.pub33`; confirm the field, and assert the exact expected aggregate in the live test (now only a regex and `!= PK_A`). Purpose-token test sits inside `if (bootCh.json.token)`, so it passes vacuously with no token; assert the token exists. No test that a second credential claiming `PK_A` via `/arkade/auth` is refused; if `client_signer_pubkey` is not bound to the credential, the `status` 403 check reduces to knowing a public key."
+  ],
+  "polish_suggestions": [
+    "`status`: spec's default lookup (no `id`/`address`, compute caller's delegation) is missing and returns 400. 404 vs 403 is an existence oracle on sequential ids. Whitelist returned delegation/coin fields instead of passing upstream JSON through. Add per-credential rate limit on register.",
+    "Client: cap response size, clamp timeout below 2^31 ms, and treat 429 as a deterministic rejection, not `outcomeUnknown`. A bare 409/412 is always mapped to blocked; a non-blocked upstream 4xx message is echoed to the caller as 400. Remove dead code (`{80,}` callback hex branch, `res.status >= 500 ? res.status : res.status`, `EXECUTOR_NOT_FOUND`, `EXECUTOR_INVALID_QUERY`). Use one URL validator, not two (config check is case-sensitive, client's is not). Match secret keys by substring (`*_seed`, `*_token`).",
+    "Tests/docs: assert each leaf's `asm`, `injected` flags, the `OP_TUNNEL` tail, and template `variables`/`outputs`/`fees` (now only function names). Add route tests for 409 blocked, 502 unknown, nested `variables.owner` spoof, spoof on `status`, status by address, and live idempotent re-register. Document request body fields in `ENDPOINTS.md`."
+  ],
+  "summary": "Strong PR. Not run; repo not visible. Checked by reading: fixture asm and intent hex strings match spec, `encodeScriptNumHex` and `encodeCsvSequenceHex` are correct (`1 << 22`, `% 512`, 16-bit range), JCS sorting is correct, auth runs before 503, spoof gives 403 with zero upstream calls, IDOR gives 403, `outcome_unknown` on 502/504, logs carry no token. Not checked: artifact hash `b9c74e80...` (not recomputed), `derived.pub` shape, `/arkade/auth` credential binding. Blockers: CSV validation bypass on the route, redirect following, config URL echo, binding test gaps. Fix those for 98+."
+}
+```

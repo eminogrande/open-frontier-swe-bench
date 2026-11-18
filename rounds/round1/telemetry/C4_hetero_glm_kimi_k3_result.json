@@ -1,0 +1,71 @@
+{
+  "id": "C4_hetero_glm_kimi_k3",
+  "label": "Hetero Coding-Specialist: Planner glm-5.3 + Worker kimi-for-coding + Reviewer k3.1-pro + Orch kimi-for-coding",
+  "mode": "pipeline",
+  "wall_s": 974.84,
+  "total_tokens": 2666593,
+  "output_tokens": 22615,
+  "reasoning_tokens": 9874,
+  "total_turns": 88,
+  "total_tool_calls": 131,
+  "added_loc": 0,
+  "own_tests_passed": false,
+  "stages": [
+    {
+      "model": "glm-5.3-abliterated",
+      "rc": 0,
+      "elapsed_s": 36.42,
+      "turns": 8,
+      "tool_calls": 12,
+      "total_tokens": 97921,
+      "input_tokens": 95188,
+      "output_tokens": 2733,
+      "reasoning_tokens": 969,
+      "text": "## Blueprint: Issue #172 Server Slice (Worker)\n\n**Reuse (no rewrites):** `verifyRequestAuth` (ArkadeServer.js L2440), `getClientSignerFromToken` (L4196), `getDerivedServerPublicKey` (L2768), `deriveAggregatedPk33` (L288). Client module style/`permanentIf`/timeout pattern: copy `src/ArkadeNotifications.js` (createArkadeNotificationsClient, L49+).\n\n**1. `scripts/fixtures/nuri_delegated_vtxo.json` + `nuri_renew.json` (new files)**\n- Artifact v1 exactly per spec; verify shapes against `node_modules/@arkade-os/sdk/dist/index.d.ts` (`ContractArtifact`, `BigNum`, `parseArtifact`) before writing. Artifact ID = RFC-8785 JCS SHA-256 of artifact JSON; `nuri_renew.json` embeds that exact `artifact` ID.\n- Traps: minimal-CScriptNum in `<exitDelay>` etc.; `OP_PUSHEXPIRY <renewalWindow>`; `5 0 OP_TUNNEL` = input-index-minus-one selector 5 range [0,5)? Confirm against `ARKADE_OP` docs \u2014 do not guess tunnel arg order.\n\n**2. `src/ArkadeExecutorClient.js` (new)**\n- `encodeScriptNumHex`: BigInt minimal LE + sign-bit (negatives via `n | -n` trick, `0n -> \"\"`), match `BigNum`.\n- `encodeCsvSequenceHex`: BIP-68 \u2014 `{type:\"seconds\",value}` must have `value % 512 === 0`; bits: type bit 22, value `<<9`, masked \u2264 0xFFFF; reject overflow and 0 with disable-flag semantics per spec (type 32/16-bit flag).\n- `computeJcsSha256Hex`: minimal RFC-8785 (UTF-16 sort, number/string escaping per spec), sha256 hex.\n- `createArkadeExecutorClient({cfg, fetchImpl})`: only `/v1/info`, `POST /v1/delegation`, `GET /v1/delegation?id|address`. AbortController timeout (`cfg.ARKADE_EXECUTOR_TIMEOUT_MS_V4`, default 10000). Network/timeout/5xx on POST \u2192 `error.code=\"EXECUTOR_OUTCOME_UNKNOWN\"; error.outcomeUnknown=true`; 400/409 `ErrBlocked` deterministic. Idempotent re-register: on 409-already-active, return existing via `getDelegation`. Redact secret-ish fields (`token|secret|seed|priv`) from all errors/logs.\n\n**3. `src/ArkadeConfig.js`**: parse `ARKADE_EXECUTOR_URL_V4`, `ARKADE_EXECUTOR_TEMPLATE_ID_V4`, `ARKADE_EXECUTOR_TIMEOUT_MS_V4` near L357 (emulator block); add to return near L508. Enabled = URL && template set. Never touch `DELEGATE_WORKER_ENABLED_V4`.\n\n**4. `src/ArkadeServer.js`**: construct executor client in `startArkadeServer` (L6002) after notifications (L6028). Handlers `handleArkadeExecutorDelegationRegister/Status(req,res,cfg,executor)` following `handleRecoveryBackupRead` (L4262). Bind: `clientPk33=getClientSignerFromToken(token)`; `derived=getDerivedServerPublicKey(cfg,clientPk33)`; `owner=deriveAggregatedPk33(clientPk33,derived.pub33)`; body-supplied mismatched `owner`/`client_recovery_key` \u2192 403; always overwrite `variables.owner`/`client_recovery_key`. Status: verify `template_id===cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4` && `variables.owner===owner` && `variables.client_recovery_key===clientPk33` else 403 (IDOR). 503 unconfigured; 504/502 `outcome_unknown`. Register routes in dispatch chain before L6212 404.\n\n**5. `ENDPOINTS.md`**: new `## Arkade Executor` section (~L112): both routes, wallet-binding invariant, trust boundary (executord signs; server holds no new secrets).\n\n**6. `src/ArkadeExecutorClient.test.js` (new)**: `node --test`; fixtures JCS integrity, encoding vectors (incl. seconds%512 trap), stub executord (node:http server), timeout/ErrBlocked/idempotency; live routes via `startArkadeServer` + env (stub executor URL): 401 (no/bad assertion, purpose-scoped token), 403 spoof, 403 IDOR, 200 roundtrip.\n\n**Order:** 1\u21922\u21926(client tests)\u21923\u21924\u21925\u21926(route tests).",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "model": "kimi-for-coding",
+      "rc": -1,
+      "elapsed_s": 540.03,
+      "turns": 53,
+      "tool_calls": 73,
+      "total_tokens": 1924859,
+      "input_tokens": 1914141,
+      "output_tokens": 10718,
+      "reasoning_tokens": 4146,
+      "text": "Got the reference. Let me see the exact middle section and check the delegatee repo's template + executord API:",
+      "stderr": "TIMEOUT after 540s",
+      "stage": "worker"
+    },
+    {
+      "model": "k3.1-pro",
+      "rc": 0,
+      "elapsed_s": 38.2,
+      "turns": 1,
+      "tool_calls": 0,
+      "total_tokens": 3416,
+      "input_tokens": 2609,
+      "output_tokens": 807,
+      "reasoning_tokens": 652,
+      "text": "- **Fixtures missing:** `scripts/fixtures/nuri_delegated_vtxo.json` and `scripts/fixtures/nuri_renew.json`; no 4-leaf artifact, renewal template, or JCS artifact-ID linkage.\n- **Implementation/docs missing:** `src/ArkadeExecutorClient.js`, encoding/JCS helpers, executor configuration, authenticated wallet-bound routes, and `ENDPOINTS.md` updates. Diff only adds an environment-specific `node_modules` symlink.\n- **Tests missing:** `src/ArkadeExecutorClient.test.js`; test command fails with rc=1 (`Could not find ...`), leaving all required unit and HTTP security integration tests undelivered.",
+      "stderr": "",
+      "stage": "reviewer"
+    },
+    {
+      "model": "kimi-for-coding",
+      "rc": -1,
+      "elapsed_s": 360.02,
+      "turns": 26,
+      "tool_calls": 46,
+      "total_tokens": 640397,
+      "input_tokens": 632040,
+      "output_tokens": 8357,
+      "reasoning_tokens": 4107,
+      "text": "Now let me examine the nuri-server codebase helpers I'll need.",
+      "stderr": "TIMEOUT after 360s",
+      "stage": "orchestrator_fix"
+    }
+  ]
+}

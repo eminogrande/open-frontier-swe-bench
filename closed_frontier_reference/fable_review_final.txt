@@ -1,0 +1,8 @@
+```json
+{
+  "approved": true,
+  "score_100": 95,
+  "must_fix": [],
+  "summary": "All 3 v1 blockers closed. Read only, not run; your test, hash and binding facts taken as given. (1) CSV: integer `exit_delay` ignored -> 400; hex `variables.exit_delay` kept but validated via `decodeCsvSequence` round-trip (86400 as `805101` rejected); `client_recovery_delay` pinned to cfg; `renewal_window` 1..31536000; `max_fee` 0..10M. (2) `redirect: \"error\"` set; config error no longer echoes URL. (3) Exact-aggregate, token-exists and hijack-400 tests present. Non-blocking follow-ups: default `status` lookup uses in-memory `recentDelegationByOwner`, so false 404 after restart or on multi-instance (persist it); binding check fails open when `getByCred` returns nothing (use `!stored ||`); 1 MiB cap runs after full `res.text()` when no content-length; 403 vs 404 id oracle remains; no route tests for hex `exit_delay` reject, 409, 429, status spoof; template hash unpinned (regex only); two URL validators remain; `max_fee: 0` sends empty hex, untested upstream."
+}
+```
