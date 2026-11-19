@@ -384,7 +384,8 @@ def run_pipeline(cfg):
         "- Slice C: `src/ArkadeServer.js`, `ENDPOINTS.md`, `src/ArkadeExecutorClient.test.js`\n"
         if is_parallel else ""
     )
-    plan_prompt = f"""ROLE: Planner / Architect. Do NOT edit files. Inspect exact relevant lines in `src/ArkadeServer.js`, `src/ArkadeConfig.js`, `src/ArkadeNotifications.js`, `ENDPOINTS.md`, and any upstream reference repos on disk. Output a crisp atomic implementation blueprint (<400 words) covering exact file edits, existing helpers to reuse (`verifyRequestAuth`, `getClientSignerFromToken`, `getDerivedServerPublicKey`, `deriveAggregatedPk33`), exact schema/encoding invariants, and security boundaries.{plan_extra}
+    plan_prompt = f"""ROLE: Planner / Architect. Do NOT edit files. Inspect exact relevant lines in `src/ArkadeServer.js`, `src/ArkadeConfig.js`, `src/ArkadeNotifications.js`, `ENDPOINTS.md`, and any upstream reference repos on disk. Output a crisp atomic implementation blueprint (<400 words) covering exact file edits, existing helpers to reuse (`verifyRequestAuth`, `getClientSignerFromToken`, `getDerivedServerPublicKey`, `deriveAggregatedPk33`), exact schema/encoding invariants, and security boundaries.
+VERBATIM SPEC RULE: Copy ALL exact exported function/symbol names, JSON field keys, HTTP route paths, env var names, error codes, and file paths VERBATIM from the TASK — never paraphrase or rename public identifiers.{plan_extra}
 
 TASK:
 {TASK_PROMPT}"""
@@ -444,6 +445,29 @@ EXACT TASK SPECIFICATION:
         s_srv["stage"] = "worker_wave2_integration"
         stages.append(s_srv)
         log(f"[{cid}] Wave-2 integration done: {s_srv['elapsed_s']}s({s_srv['total_tokens']}t)")
+
+    # Hard onYield Verification Gate (ported from pi-durable-swarm: real test + regression execution, up to 2 auto-retries before review!)
+    def run_hard_gate(wt_dir):
+        test_file = f"{wt_dir}/src/ArkadeExecutorClient.test.js"
+        if not os.path.exists(test_file):
+            return False, "HARD TEST GATE FAILED: missing required test file `src/ArkadeExecutorClient.test.js`."
+        t1 = subprocess.run(["node", "--test", "src/ArkadeExecutorClient.test.js"], cwd=wt_dir, capture_output=True, text=True, timeout=60)
+        t2 = subprocess.run(["node", "scripts/notifications-bind-proof.mjs"], cwd=wt_dir, capture_output=True, text=True, timeout=60)
+        if t1.returncode == 0 and t2.returncode == 0:
+            return True, (t1.stdout + t1.stderr)[-2500:]
+        err = f"ArkadeExecutorClient.test.js rc={t1.returncode}:\n{(t1.stdout+t1.stderr)[-1200:]}\nnotifications-bind-proof.mjs rc={t2.returncode}:\n{(t2.stdout+t2.stderr)[-800:]}"
+        return False, err
+
+    gate_ok, gate_out = run_hard_gate(wt)
+    heal_spec = cfg.get("worker_srv") or cfg["worker"]
+    for retry_i in range(2):
+        if gate_ok:
+            break
+        log(f"[{cid}] onYield Hard Gate FAIL (retry {retry_i+1}/2) — auto-continuing worker...")
+        s_heal = dispatch(heal_spec, f"HARD TEST GATE FAILED — fix every failure below and re-run both tests until exit 0:\n{gate_out}", cwd=wt, tools=True, timeout=300)
+        s_heal["stage"] = f"onyield_retry_{retry_i+1}"
+        stages.append(s_heal)
+        gate_ok, gate_out = run_hard_gate(wt)
 
     cand_diff = clean_wt_diff(wt)
     test_mid = subprocess.run(["node", "--test", "src/ArkadeExecutorClient.test.js"], cwd=wt, capture_output=True, text=True, timeout=60)
