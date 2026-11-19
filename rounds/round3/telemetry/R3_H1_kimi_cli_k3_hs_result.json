@@ -1,0 +1,31 @@
+{
+  "id": "R3_H1_kimi_cli_k3_hs",
+  "label": "Solo Native Harness: kimi-code 2.5.2 + kimi-code/k3.1-pro-highspeed",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 483.02,
+  "total_tokens": 6745679,
+  "output_tokens": 28451,
+  "reasoning_tokens": 0,
+  "total_turns": 49,
+  "total_tool_calls": 101,
+  "added_loc": 884,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "harness": "kimi-code-2.5.2",
+      "model": "kimi-code/k3.1-pro-highspeed",
+      "rc": 0,
+      "elapsed_s": 482.98,
+      "turns": 49,
+      "tool_calls": 101,
+      "total_tokens": 6745679,
+      "input_tokens": 6717228,
+      "output_tokens": 28451,
+      "reasoning_tokens": 0,
+      "text": "Implemented Issue #172 server slice.\n\n- Added 4-leaf fixtures; artifact ID: `b9c74e801d6ca75320a33f6fa00e66d19a05959d0a6b52b9a2050b1733f98080`.\n- Added executor client, config, wallet-bound routes, security checks, docs. No admin/legacy delegation exposure.\n- Passed: 13/13 tests, syntax/diff checks, token and auth regression proofs.",
+      "stderr": "f\": \"token-constant-time\", \"checks\": 5 }\ngo version go1.24.5 darwin/arm64\n M ENDPOINTS.md\n M src/ArkadeConfig.js\n M src/ArkadeServer.js\n?? node_modules\n?? scripts/fixtures/\n?? src/ArkadeExecutorClient.js\n?? src/ArkadeExecutorClient.test.js\n{\"ok\":true,\"proof\":\"auth-response-fields\",\"credPubkeyReturned\":true,\"safeAddressIsHint\":true}\n M ENDPOINTS.md\n M src/ArkadeConfig.js\n M src/ArkadeServer.js\n?? node_modules\n?? scripts/fixtures/\n?? src/ArkadeExecutorClient.js\n?? src/ArkadeExecutorClient.test.js\n",
+      "stage": "solo_worker"
+    }
+  ]
+}

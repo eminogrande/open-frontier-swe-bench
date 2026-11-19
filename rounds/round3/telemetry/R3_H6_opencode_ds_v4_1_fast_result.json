@@ -1,0 +1,31 @@
+{
+  "id": "R3_H6_opencode_ds_v4_1_fast",
+  "label": "Solo Opencode Harness on DeepSeek: opencode 1.19.3 + deepseek-v4.1-flash (153 tok/s)",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 317.66,
+  "total_tokens": 5699913,
+  "output_tokens": 19785,
+  "reasoning_tokens": 14668,
+  "total_turns": 60,
+  "total_tool_calls": 77,
+  "added_loc": 1194,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "harness": "opencode-1.19.3",
+      "model": "pr/deepseek-v4.1-flash-abliterated",
+      "rc": 0,
+      "elapsed_s": 317.66,
+      "turns": 60,
+      "tool_calls": 77,
+      "total_tokens": 5699913,
+      "input_tokens": 5665460,
+      "output_tokens": 19785,
+      "reasoning_tokens": 14668,
+      "text": "Implemented Issue #172 server slice.\n\n- Added fixtures: `scripts/fixtures/nuri_delegated_vtxo.json` (4 leaves incl. delayed client recovery) and `scripts/fixtures/nuri_renew.json` bound to the exact JCS artifact hash.\n- Added `src/ArkadeExecutorClient.js`: CScriptNum/BIP-68 encoders, RFC-8785 JCS hash, timeout/uncertainty classification, `ErrBlocked`, redaction.\n- Added config, authenticated wallet-bound routes, `ENDPOINTS.md`, and tests.\n\nTests: `npm test` -> 11/11 pass via `node --test src/ArkadeExecutorClient.test.js`.",
+      "stderr": "",
+      "stage": "solo_worker"
+    }
+  ]
+}

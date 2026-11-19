@@ -1,0 +1,149 @@
+{
+  "gates": {
+    "CLOSED_FRONTIER_GOLD_carbon_fable": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R3_H10_combo_qwen4_dsh": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "                    ^\n\nError: missing delegation id\n    at file:///private/tmp/subtasks/st6_round3/wt_R3_H10_combo_qwen4_dsh/[eval1]:221:21\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 4,
+      "gates_total": 7
+    },
+    "R3_H1_kimi_cli_k3_hs": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R3_H2_pi_k3_nous": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R3_H3_opencode_k3_nous": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 6,
+      "gates_total": 7
+    },
+    "R3_H4_dsh_k3_nous": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R3_H5_dsh_ds_v4_1_fast": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R3_H6_opencode_ds_v4_1_fast": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R3_H7_vibe_ml4_native": {
+      "G1_own_tests": false,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "rror\":\"exit_delay required\",\"outcome_unknown\":false}\n    at file:///private/tmp/subtasks/st6_round3/wt_R3_H7_vibe_ml4_native/[eval1]:218:34\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 3,
+      "gates_total": 7
+    },
+    "R3_H8_combo_native_dream_team": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": true,
+      "G3_encoding_and_jcs_invariants": true,
+      "G4_uncertain_outcome_handling": true,
+      "G5_live_http_auth_idor_security": true,
+      "G5_sec_detail": "LIVE_HTTP_SEC_OK",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 7,
+      "gates_total": 7
+    },
+    "R3_H9_combo_dsh_unified": {
+      "G1_own_tests": true,
+      "G2_go_compiler_fixtures": false,
+      "G3_encoding_and_jcs_invariants": false,
+      "G4_uncertain_outcome_handling": false,
+      "G5_live_http_auth_idor_security": false,
+      "G5_sec_detail": "am BIP-68 CSV hex mismatch: exit=ec3240 rec=ec3240\n    at file:///private/tmp/subtasks/st6_round3/wt_R3_H9_combo_dsh_unified/[eval1]:232:11\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\nNode.js v22.22.3",
+      "G6_existing_server_regression": true,
+      "G7_docs_and_no_admin_leak": true,
+      "gates_passed": 3,
+      "gates_total": 7
+    }
+  },
+  "anon_map": {
+    "CANDIDATE_A": "R3_H10_combo_qwen4_dsh",
+    "CANDIDATE_B": "R3_H3_opencode_k3_nous",
+    "CANDIDATE_C": "R3_H9_combo_dsh_unified",
+    "CANDIDATE_D": "R3_H7_vibe_ml4_native",
+    "CANDIDATE_E": "R3_H8_combo_native_dream_team",
+    "CANDIDATE_F": "R3_H1_kimi_cli_k3_hs",
+    "CANDIDATE_G": "R3_H5_dsh_ds_v4_1_fast",
+    "CANDIDATE_H": "R3_H6_opencode_ds_v4_1_fast",
+    "CANDIDATE_I": "R3_H4_dsh_k3_nous",
+    "CANDIDATE_J": "R3_H2_pi_k3_nous"
+  },
+  "fable_raw": "```json\n{\n  \"scores\": {\n    \"CANDIDATE_A\": {\n      \"correctness_25\": 12,\n      \"security_25\": 16,\n      \"craft_brevity_25\": 15,\n      \"tests_docs_25\": 13,\n      \"total_100\": 56,\n      \"key_strengths\": \"Client sets redirect:\\\"error\\\"; strict base-URL guard (http(s) only, no :7081, no path/query); correct ScriptNum and BIP-68 512 logic; clear ENDPOINTS.md trust-boundary text; 4xx vs unknown-outcome split on POST.\",\n      \"flaws_found\": \"4/7 gates (G2, G3, G5 fail). Artifact adds formatVersion and uses wrong renew asm (OP_INSPECTINTENTMESSAGE 0/1, no key pushes). nuri_renew.json is flat: no inputs[].contract.definition.artifact, top-level artifact/spend. Variable regex requires non-empty hex, so \\\"\\\" (0n, e.g. max_fee 0) is rejected. encodeScriptNumHex accepts arbitrary BigInt()-coercible input. Live auth/IDOR gate failed. ArkadeConfig imports from the client module (inverted dependency).\"\n    },\n    \"CANDIDATE_B\": {\n      \"correctness_25\": 19,\n      \"security_25\": 20,\n      \"craft_brevity_25\": 19,\n      \"tests_docs_25\": 18,\n      \"total_100\": 76,\n      \"key_strengths\": \"6/7 gates. Correct renew asm and correct nested template structure; solid JCS, ScriptNum and CSV helpers; unknown-outcome vs ErrBlocked classification; client rejects :7081 and admin/artifact/template paths; live auth/IDOR gate passes; .env.example updated.\",\n      \"flaws_found\": \"Artifact carries extra formatVersion:1, so the Go compiler gate (G2) fails and the content ID differs from the reference. No redirect:\\\"error\\\". No config-load validation (client only). Status default depends on in-process 'latest registration' state, lost on restart. Sensitive regex includes 'signing'/'prf', which is over-broad.\"\n    },\n    \"CANDIDATE_C\": {\n      \"correctness_25\": 9,\n      \"security_25\": 12,\n      \"craft_brevity_25\": 13,\n      \"tests_docs_25\": 11,\n      \"total_100\": 45,\n      \"key_strengths\": \"Correct ScriptNum/CSV encoders; whitelists the six template variables; documents the trust boundary; some redirect handling (manual, treated as unknown).\",\n      \"flaws_found\": \"3/7 gates (G2, G3, G4, G5 fail). Artifact has formatVersion, invented arkade inputs ($intentType), and swapped input/output index logic in the value check. Template is flat with no inputs/contract structure. Every 400/409 is labelled ErrBlocked. GET failures are also marked outcomeUnknown. Status resolves the caller's delegation by re-registering, so a read route mutates. redirect:\\\"manual\\\" instead of \\\"error\\\". No URL/7081 validation. Adds a package.json script.\"\n    },\n    \"CANDIDATE_D\": {\n      \"correctness_25\": 7,\n      \"security_25\": 12,\n      \"craft_brevity_25\": 11,\n      \"tests_docs_25\": 8,\n      \"total_100\": 38,\n      \"key_strengths\": \"Encoders are basically right; forbidden-path regex and :7081 guard in config and client; 64-hex template check; docs describe the binding and failure semantics.\",\n      \"flaws_found\": \"3/7 gates, and its own tests fail (G1). Artifact is an invented schema (script/signatures/covenant.checks as prose, descriptions, format field) that is not artifact v1 and cannot compile. Template is flat, with extra name/description. Docs conflate template ID with artifact ID. Non-empty hex regex rejects \\\"\\\" for zero. All transport errors (including GET) are marked outcome-unknown. Every 400/409 is treated as blocked. No redirect:\\\"error\\\". Live auth/IDOR gate fails.\"\n    },\n    \"CANDIDATE_E\": {\n      \"correctness_25\": 24,\n      \"security_25\": 23,\n      \"craft_brevity_25\": 21,\n      \"tests_docs_25\": 23,\n      \"total_100\": 91,\n      \"key_strengths\": \"7/7 gates. Fixtures match the reference (artifact ID b9c74e80\u2026). Config-load validation covers protocol, credentials, :7081, /v1/admin, query/hash and 64-hex template. Client uses redirect:\\\"error\\\", a 1 MiB response bound, sanitized status-only errors, and handles 408/5xx as unknown, 400/409/412 as blocked, 429 passthrough. Status defaults to the caller's derived address rather than in-process state. Concise, accurate docs.\",\n      \"flaws_found\": \"encodeScriptNumHex is capped at int32, narrower than arkade.BigNum. In-process 'accepted' Map for idempotency is unneeded state. URL validation is duplicated in config and client. Blocked detection relies on a /blocked|cancel/ message regex. Timeout floor silently clamps to 1s.\"\n    },\n    \"CANDIDATE_F\": {\n      \"correctness_25\": 23,\n      \"security_25\": 21,\n      \"craft_brevity_25\": 22,\n      \"tests_docs_25\": 21,\n      \"total_100\": 87,\n      \"key_strengths\": \"7/7 gates. Fixtures match the reference. Most compact client (224 lines), reusing ArkadeCrypto sha256. Strict config check in the client (origin only, no :7081, 64-hex template). Template-mismatch 403, secret-field refusal, clean unknown-outcome vs blocked classification. Tests use startArkadeServer with real token and MuSig derivation. Crisp docs.\",\n      \"flaws_found\": \"No redirect:\\\"error\\\". No response-size bound. No config-load validation, so a bad URL only surfaces as a runtime 503. Status default relies on prior registration in this server process. Zero-value CSV is accepted (blocks 0 gives \\\"\\\"). 408 is not treated as uncertain.\"\n    },\n    \"CANDIDATE_G\": {\n      \"correctness_25\": 21,\n      \"security_25\": 19,\n      \"craft_brevity_25\": 19,\n      \"tests_docs_25\": 21,\n      \"total_100\": 80,\n      \"key_strengths\": \"7/7 gates. Artifact is canonical-sorted and hashes to the reference ID. Good encoders. normalizeDelegation gives a whitelisted view. Thorough docs including a trust-boundary section.\",\n      \"flaws_found\": \"Template adds non-spec fields (outputs[].index, packets.output_index). Timeout and 5xx use codes EXECUTOR_TIMEOUT / EXECUTOR_UNAVAILABLE instead of the required EXECUTOR_OUTCOME_UNKNOWN (only the flag is set). Upstream message (up to 400 chars) is propagated into errors. Any 409 or a regex match is blocked, even on GET. No redirect:\\\"error\\\". Config has no :7081 or /v1/admin guard. LOWER_HEX requires non-empty. Promise.race timeout is convoluted. Adds a package.json script.\"\n    },\n    \"CANDIDATE_H\": {\n      \"correctness_25\": 20,\n      \"security_25\": 20,\n      \"craft_brevity_25\": 19,\n      \"tests_docs_25\": 20,\n      \"total_100\": 79,\n      \"key_strengths\": \"7/7 gates. Valid artifact v1 structure and correct template shape. Good encoders and JCS. 64-hex template validation in config. Clear failure-contract docs. .env.example updated. Deep redaction of response values.\",\n      \"flaws_found\": \"Artifact renew asm departs from the exact contract: it adds <COSIGNER_KEY> / cosigners_public_keys checks, so the artifact ID (cf95\u2026) differs from the reference. No :7081 or /v1/admin guard visible in config. No redirect:\\\"error\\\". GET failures and 5xx are also labelled EXECUTOR_OUTCOME_UNKNOWN. Raw remote message is used as the error message. Status default uses in-process last registration. Adds ARKADE_EXECUTOR_ENABLED_V4 and a package.json test script beyond scope.\"\n    },\n    \"CANDIDATE_I\": {\n      \"correctness_25\": 22,\n      \"security_25\": 21,\n      \"craft_brevity_25\": 20,\n      \"tests_docs_25\": 21,\n      \"total_100\": 84,\n      \"key_strengths\": \"7/7 gates. Fixtures match the reference. Client rejects effective port 7081, credentials and query/fragment. Verifies the registration response's template and variables against the request (mismatch becomes outcome-unknown). Malformed 200 on POST is unknown. Nested secret-key refusal. Docs give thoughtful trust notes (covenant limits, opt-out semantics).\",\n      \"flaws_found\": \"No redirect:\\\"error\\\". No config-load validation. Sends camelCase templateId/expiresAt, and docs say `expiresAt`, diverging from the snake_case contract. Status with no id/address and no prior in-process registration returns 400 instead of resolving the wallet's delegation. registeredAddresses Map is extra state. Secret regex is narrow (secret|token|seed). normalizeVariables walks the input twice.\"\n    },\n    \"CANDIDATE_J\": {\n      \"correctness_25\": 23,\n      \"security_25\": 21,\n      \"craft_brevity_25\": 21,\n      \"tests_docs_25\": 21,\n      \"total_100\": 86,\n      \"key_strengths\": \"7/7 gates. Fixtures match the reference (nuri_renew.json is byte-identical to the reference blob). Client validates URL against :7081, /v1/admin|artifact|template, credentials and query. 408/5xx/malformed 200 on register are unknown. A non-active returned status becomes ErrBlocked. Broad secret-field refusal. Accepts {type,value} or pre-encoded hex. .env.example and docs are clear.\",\n      \"flaws_found\": \"No redirect:\\\"error\\\". No response-size bound. Config does not validate URL or template (client-time only). camelCase request payload. Status fallback after restart needs the caller to resend variables and goes through idempotent registration, a mutating path for a read. Extra ARKADE_EXECUTOR_ENABLED_V4 flag. Doc wording 'ignores no mismatch' is awkward. clearTimeout handling is slightly ad hoc.\"\n    }\n  },\n  \"ranking\": [\n    \"CANDIDATE_E\",\n    \"CANDIDATE_F\",\n    \"CANDIDATE_J\",\n    \"CANDIDATE_I\",\n    \"CANDIDATE_G\",\n    \"CANDIDATE_H\",\n    \"CANDIDATE_B\",\n    \"CANDIDATE_A\",\n    \"CANDIDATE_C\",\n    \"CANDIDATE_D\"\n  ]\n}\n```"
+}

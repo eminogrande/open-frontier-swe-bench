@@ -1,6 +1,6 @@
-# Open-Frontier SWE Multi-Agent Benchmark (`open-frontier-swe-bench`)
+# Open-Frontier SWE Multi-Agent & Native-Harness Benchmark (`open-frontier-swe-bench`)
 
-Empirical, double-blind software-engineering benchmark finding the **best strictly OPEN-FRONTIER model combination** across **Planner -> Worker -> Reviewer -> Orchestrator** — using a **Closed-Frontier Gold PR (`95/100`, `7/7` gates)** solely as the target bar to beat.
+Empirical, double-blind software-engineering benchmark finding the **best strictly OPEN-FRONTIER model + CLI harness stack** across **Planner -> Worker -> Reviewer -> Orchestrator** — using a **Closed-Frontier Gold PR (`95/100`, `7/7` gates)** solely as the target bar to beat.
 
 Every round is committed here with full raw stage-by-stage telemetry, unified `.patch` diffs, anonymized blind-judge mappings, runner harnesses, and open-weights catalog audits.
 
@@ -21,70 +21,98 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 2. `G2_go_compiler_fixtures`: Real Go `arkade-os/delegatee/pkg/template` (`1aeb47a4`) parses `nuri_delegated_vtxo.json` (4 functions) and compiles `nuri_renew.json` (`template.Proof`).
 3. `G3_encoding_and_jcs_invariants`: Exact minimal CScriptNum (`0 -> ""`, `144 -> "9000"`, `-1 -> "81"`), BIP-68 CSV (`512s -> "010040"`, `86400s` throws), and RFC-8785 JCS SHA-256 match.
 4. `G4_uncertain_outcome_handling`: Network/timeout on `POST /v1/delegation` surfaces `EXECUTOR_OUTCOME_UNKNOWN` (`outcomeUnknown: true`).
-5. `G5_live_http_auth_idor_security`: Live `ArkadeServer.js` subprocess against stub `executord` enforces `401` unauth, `401` purpose-scoped bootstrap token, `403` `client_recovery_key` spoofing, `200` bound registration (`ec3240` CSV hex), and `403` cross-wallet status IDOR.
+5. `G5_live_http_auth_idor_security`: Live `ArkadeServer.js` subprocess against stub `executord` (accepting Go `meshapi` protojson `snake_case` + `camelCase` field parity) enforces `401` unauth, `401` purpose-scoped bootstrap token, `403` `client_recovery_key` spoofing, `200` bound registration (`ec3240` CSV hex), and `403` cross-wallet status IDOR.
 6. `G6_existing_server_regression`: Existing `node scripts/notifications-bind-proof.mjs` passes (`rc=0`).
 7. `G7_docs_and_no_admin_leak`: `ENDPOINTS.md` documents both routes; zero `/v1/admin` or `:7081` exposure in `ArkadeServer.js`.
 
-All candidate diffs are stripped of model/pipeline identity, shuffled with a fixed PRNG seed into `CANDIDATE_A..N`, and graded blindly (`correctness_25`, `security_25`, `craft_brevity_25`, `tests_docs_25`) against the `95/100` Closed-Frontier anchor.
+All candidate diffs are stripped of model/harness/pipeline identity, shuffled with a fixed PRNG seed into `CANDIDATE_A..J`, and graded blindly by `anthropic/claude-fable-5.2` (`correctness_25`, `security_25`, `craft_brevity_25`, `tests_docs_25`) against the `95/100` Closed-Frontier anchor.
 
 ---
 
-## Round 1 Results (`rounds/round1/`) — Open-Weight Stack (`paymentrequired` Router)
+## Round 3 Results (`rounds/round3/`) — Native CLI Harnesses × Open-Frontier Models
+
+Tested **5 CLI coding harnesses** headlessly on the exact same frozen commit & prompt:
+- **`dsh 0.2.1-rc.5`** (`deepseek-ai/deepseek-harness`, official DeepSeek Harness, 283.7K★)
+- **`kimi-code 2.5.2`** (official Kimi Code CLI + `kimi-code/k3.1-pro-highspeed`)
+- **`vibe 3.1.3`** (`mistralai/mistral-vibe`, official Mistral Vibe CLI)
+- **`opencode 1.19.3`** (`anomalyco/opencode`)
+- **`pi 1.5.2`** (generic baseline harness at matched high-speed `133–153 tok/s` endpoints)
+
+| Rank | Pipeline | Open Weights? | Harness × Model Architecture | Gates (`7`) | Blind Score (`/100`) | Wall (`s`) | Tokens | LOC |
+| :---: | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: |
+| *Target* | `GOLD_carbon_fable` *(Closed Ref)* | No | `3x gemini-4-carbon -> claude-fable-5.2` | **`7/7`** | **`95/100`** | `~190s` | `~145K` | `~1,150` |
+| **1** | `R3_H8_combo_native_dream_team` | **Yes** | `kimi-cli(k3.1-pro-hs)` -> `dsh(ds-v4.1-flash)` -> `vibe(ml4)` -> `dsh(ds-v4.1-flash)` | **`7/7`** | **`91/100`** (`C:24 S:23 B:21 T:23`) | `971.4s` | `9,101,980` | `1,408` |
+| **2** | `R3_H1_kimi_cli_k3_hs` | **Yes** | Solo **`kimi-code 2.5.2`** + `kimi-code/k3.1-pro-highspeed` | **`7/7`** | **`87/100`** (`C:23 S:21 B:22 T:21`) | `483.0s` | `6,745,679` | **`884`** |
+| **3** | `R3_H2_pi_k3_nous` | **Yes** | Solo **`pi 1.5.2`** + `nous/kimi-k3.1-pro` (`133 tok/s`) | **`7/7`** | **`86/100`** (`C:23 S:21 B:21 T:21`) | `485.8s` | **`4,284,586`** | `1,016` |
+| **4** | `R3_H4_dsh_k3_nous` | **Yes** | Solo **`dsh 0.2.1-rc.5`** + `nous/kimi-k3.1-pro` | **`7/7`** | **`84/100`** (`C:22 S:21 B:20 T:21`) | `601.5s` | `7,797,918` | `956` |
+| **5** | `R3_H5_dsh_ds_v4_1_fast` | **Yes** | Solo **`dsh 0.2.1-rc.5`** + `deepseek-v4.1-flash` (`153 tok/s`) | **`7/7`** | **`80/100`** (`C:21 S:19 B:19 T:21`) | `601.5s` | `12,700,954` | `1,422` |
+| **6** | `R3_H6_opencode_ds_v4_1_fast` | **Yes** | Solo **`opencode 1.19.3`** + `deepseek-v4.1-flash` (`153 tok/s`) | **`7/7`** | **`79/100`** (`C:20 S:20 B:19 T:20`) | **`317.7s`** | `5,699,913` | `1,194` |
+| **7** | `R3_H3_opencode_k3_nous` | **Yes** | Solo **`opencode 1.19.3`** + `nous/kimi-k3.1-pro` | `6/7` *(G2)* | **`76/100`** (`C:19 S:20 B:19 T:18`) | `601.5s` | `7,859,483` | `1,056` |
+| **8** | `R3_H10_combo_qwen4_dsh` | No *(API)* | `pi(qwen4-max)` -> `dsh(ds-v4.1-flash)` -> `pi(qwen4-max)` -> `dsh(ds-v4.1-flash)` | `4/7` | `56/100` (`C:12 S:16 B:15 T:13`) | `540.7s` | `6,795,368` | `1,160` |
+| **9** | `R3_H9_combo_dsh_unified` | **Yes** | `dsh(k3.1-pro)` -> `dsh(ds-v4.1-flash)` -> `dsh(ml4)` -> `dsh(ds-v4.1-flash)` | `3/7` | `45/100` (`C:9 S:12 B:13 T:11`) | `658.5s` | `8,676,814` | `1,235` |
+| **10** | `R3_H7_vibe_ml4_native` | **Yes** | Solo **`vibe 3.1.3`** + `mistral-large-4-0` | `3/7` | `38/100` (`C:7 S:12 B:11 T:8`) | `590.7s` | `1,933,315` | `631` |
+
+---
+
+## Round 1 Results (`rounds/round1/`) — Baseline `pi` Harness (`paymentrequired` Router)
 
 | Rank | Pipeline | Open Weights? | Architecture (`Planner -> Worker -> Reviewer -> Orch`) | Gates (`7`) | Blind Score (`/100`) | Wall (`s`) | Tokens |
 | :---: | :--- | :---: | :--- | :---: | :---: | :---: | :---: |
 | *Target* | `GOLD_carbon_fable` *(Closed Ref)* | No | `3x gemini-4-carbon -> claude-fable-5.2` | **`7/7`** | **`95/100`** | `~190s` | `~145K` |
-| **1** | `C6_solo_deepseek_v4_1` | **Yes** | Solo `deepseek-v4.1-flash-abliterated` | **`7/7`** | **`91/100`** (`C:24 S:23 B:21 T:23`) | **`380.1s`** | `8,784,093` |
-| **2** | `C3_hetero_k3_ds_glm` | **Yes** | `k3.1-pro -> deepseek-v4.1-flash -> glm-5.3 -> deepseek-v4.1-flash` | **`7/7`** | **`88/100`** (`C:23 S:22 B:21 T:22`) | `865.4s` | **`7,014,140`** |
+| **1** | `C6_solo_deepseek_v4_1` | **Yes** | Solo `pi` + `deepseek-v4.1-flash-abliterated` (`153 tok/s`) | **`7/7`** | **`91/100`** (`C:24 S:23 B:21 T:23`) | **`380.1s`** | `8,784,093` |
+| **2** | `C3_hetero_k3_ds_glm` | **Yes** | `k3.1-pro -> deepseek-v4.1-flash -> glm-5.3 -> deepseek-v4.1-flash` (`pi`) | **`7/7`** | **`88/100`** (`C:23 S:22 B:21 T:22`) | `865.4s` | **`7,014,140`** |
 | **3** | `C5_hetero_nem_ds_k3` | **Yes** | `nemotron-3-ultra-550b -> deepseek-v4.1-flash -> k3.1-pro -> deepseek-v4.1-flash` | `4/7` | `41/100` (`C:8 S:9 B:12 T:12`) | `816.1s` | `4,573,588` |
-| **4** | `C2_homo_k3_4stage` | **Yes** | `k3.1-pro x4` (Homogeneous) | `2/7` | `23/100` (`C:8 S:6 B:9 T:0`) | `1,401.9s` | `2,266,663` |
+| **4** | `C2_homo_k3_4stage` | **Yes** | `k3.1-pro x4` (`24 tok/s` slow endpoint) | `2/7` | `23/100` (`C:8 S:6 B:9 T:0`) | `1,401.9s` | `2,266,663` |
 | **5** | `C4_hetero_glm_kimi_k3` | **Yes** | `glm-5.3 -> kimi-for-coding -> k3.1-pro -> kimi-for-coding` | `1/7` | `0/100` | `974.8s` | `2,666,593` |
-| **6** | `C1_solo_k3_max` | **Yes** | Solo `k3.1-pro` max thinking | `1/7` | `0/100` | `600.1s` | `1,012,631` |
+| **6** | `C1_solo_k3_max` | **Yes** | Solo `k3.1-pro` (`24 tok/s` slow endpoint) | `1/7` | `0/100` | `600.1s` | `1,012,631` |
 
 ---
 
-## Round 2 Results (`rounds/round2/`) — Nov 2026 Expanded Open-Frontier Contenders
+## Round 2 Results (`rounds/round2/`) — Nov 2026 Expanded Open-Frontier Contenders (`Nous`)
 
-Tested **10 new pipelines** covering the latest Oct/Nov 2026 releases (`mistralai/mistral-large-4-0` [Mistral Vibe engine], `mistralai/devstral-2512`, `qwen/qwen3.8-2.4t-a95b`, API-only `qwen/qwen4-max` [released 2026-11-16], `meta/muse-spark-open`, `deepseek/deepseek-v4-pro-0813`, `deepseek/deepseek-v4.1-flash-1017`, `moonshotai/kimi-k3.1-pro`, `z-ai/glm-5.3-prime`). Full model audit in [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_11_OPEN_FRONTIER_CATALOG.md).
+Full model audit in [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_11_OPEN_FRONTIER_CATALOG.md).
 
 | Rank | Pipeline | Open Weights? | Architecture (`Planner -> Worker -> Reviewer -> Orch`) | Gates (`7`) | Blind Score (`/100`) | Wall (`s`) | Tokens |
 | :---: | :--- | :---: | :--- | :---: | :---: | :---: | :---: |
-| **1** | `R2_C9_hetero_ml4_ds41_qwen2_4t` | **Yes** | Planner mistral-large-4-0 -> Worker deepseek-v4.1-flash-1017 -> Reviewer qwen3.8-2.4t-a95b -> Orch deepseek-v4.1-flash-1017 | `5/7` | **`58/100`** (`C:15 S:14 B:14 T:15`) | `750.4s` | `2,815,486` |
-| **2** | `R2_C7_hetero_qwen2_4t_ml4_k3` | **Yes** | Planner qwen3.8-2.4t-a95b -> Worker mistral-large-4-0 -> Reviewer kimi-k3.1-pro -> Orch mistral-large-4-0 | `4/7` | **`54/100`** (`C:13 S:14 B:14 T:13`) | `997.29s` | `2,618,723` |
-| **3** | `R2_C6_homo_ml4_4stage` | **Yes** | mistral-large-4-0 x4 | `4/7` | **`49/100`** (`C:11 S:16 B:13 T:9`) | `1133.79s` | `1,500,002` |
-| **4** | `R2_C3_solo_qwen4_max` | No *(API)* | qwen/qwen4-max | `3/7` | **`45/100`** (`C:12 S:13 B:13 T:7`) | `600.12s` | `800,227` |
-| **5** | `R2_C10_hetero_dsv4pro_devstral_glm53` | **Yes** | Planner deepseek-v4-pro-0813 -> Worker devstral-2512 -> Reviewer glm-5.3-prime -> Orch devstral-2512 | `4/7` | **`37/100`** (`C:8 S:9 B:9 T:11`) | `1055.15s` | `6,712,608` |
-| **6** | `R2_C8_hetero_k3_muse_ml4` | **Yes** | Planner kimi-k3.1-pro -> Worker muse-spark-open -> Reviewer mistral-large-4-0 -> Orch muse-spark-open | `3/7` | **`25/100`** (`C:6 S:5 B:6 T:8`) | `997.84s` | `3,468,815` |
-| **7** | `R2_C1_solo_mistral_large_4` | **Yes** | mistralai/mistral-large-4-0 (1T/52B) | `1/7` | **`7/100`** (`C:5 S:0 B:2 T:0`) | `600.12s` | `1,541,372` |
-| **8** | `R2_C5_solo_deepseek_v4_pro` | **Yes** | deepseek/deepseek-v4-pro-0813 (1.6T) | `1/7` | **`1/100`** (`C:0 S:0 B:1 T:0`) | `600.11s` | `2,382,680` |
-| **9** | `R2_C4_solo_muse_spark_open` | **Yes** | meta/muse-spark-open (816B/42B) | `1/7` | **`1/100`** (`C:0 S:0 B:1 T:0`) | `2.02s` | `3,802` |
-| **10** | `R2_C2_solo_qwen3_8_2_4t` | **Yes** | qwen/qwen3.8-2.4t-a95b (2.4T/95B) | `1/7` | **`1/100`** (`C:0 S:0 B:1 T:0`) | `243.41s` | `759,359` |
+| **1** | `R2_C9_hetero_ml4_ds41_qwen2_4t` | **Yes** | `mistral-large-4-0 -> deepseek-v4.1-flash-1017 -> qwen3.8-2.4t-a95b -> deepseek-v4.1-flash-1017` | `5/7` | **`58/100`** (`C:15 S:14 B:14 T:15`) | `750.4s` | `2,815,486` |
+| **2** | `R2_C7_hetero_qwen2_4t_ml4_k3` | **Yes** | `qwen3.8-2.4t-a95b -> mistral-large-4-0 -> kimi-k3.1-pro -> mistral-large-4-0` | `4/7` | **`54/100`** (`C:13 S:14 B:14 T:13`) | `997.3s` | `2,618,723` |
+| **3** | `R2_C6_homo_ml4_4stage` | **Yes** | `mistral-large-4-0 x4` | `4/7` | **`49/100`** (`C:11 S:16 B:13 T:9`) | `1,133.8s` | `1,500,002` |
+| **4** | `R2_C3_solo_qwen4_max` | No *(API)* | Solo `qwen/qwen4-max` | `3/7` | **`45/100`** (`C:12 S:13 B:13 T:7`) | `600.1s` | `800,227` |
+| **5** | `R2_C10_hetero_dsv4pro_devstral_glm53` | **Yes** | `deepseek-v4-pro-0813 -> devstral-2512 -> glm-5.3-prime -> devstral-2512` | `4/7` | **`37/100`** (`C:8 S:9 B:9 T:11`) | `1,055.2s` | `6,712,608` |
+| **6** | `R2_C8_hetero_k3_muse_ml4` | **Yes** | `kimi-k3.1-pro -> muse-spark-open -> mistral-large-4-0 -> muse-spark-open` | `3/7` | **`25/100`** (`C:6 S:5 B:6 T:8`) | `997.8s` | `3,468,815` |
+| **7** | `R2_C1_solo_mistral_large_4` | **Yes** | Solo `mistralai/mistral-large-4-0` (1T/52B) | `1/7` | `7/100` | `600.1s` | `1,541,372` |
+| **8** | `R2_C5_solo_deepseek_v4_pro` | **Yes** | Solo `deepseek/deepseek-v4-pro-0813` (1.6T) | `1/7` | `1/100` | `600.1s` | `2,382,680` |
+| **9** | `R2_C4_solo_muse_spark_open` | **Yes** | Solo `meta/muse-spark-open` (816B/42B) | `1/7` | `1/100` | `2.0s` | `3,802` |
+| **10** | `R2_C2_solo_qwen3_8_2_4t` | **Yes** | Solo `qwen/qwen3.8-2.4t-a95b` (2.4T/95B) | `1/7` | `1/100` | `243.4s` | `759,359` |
 
 ---
 
-## Cross-Round Synthesis: Why "Different Brains" Win & Exact Open-Frontier Stack
+## Cross-Round Key Findings (26 Controlled Pipelines Across 3 Rounds)
 
-1. **Every Solo Heavy-Reasoning Flagship Failed at `600s` on the 6,278-LOC Monolith**:
-   - `kimi-k3.1-pro` solo (`0/100`), `deepseek-v4-pro-0813` solo (`1/100`), `qwen3.8-2.4t-a95b` solo (`1/100`), `mistral-large-4-0` solo (`7/100`), `muse-spark-open` solo (`1/100` — 1-turn tool-skip quirk), and API-only `qwen4-max` solo (`45/100`, `3/7` gates) **all stalled or timed out** when forced to read a 6.2K-line file, inspect upstream Go repos, implement 7 files, and debug live WebAuthn tests in one agent loop.
-   - Only **`deepseek-v4.1-flash`** (`C6`: **`91/100`, `7/7` gates in `380s`**) had the tool-call throughput (`98` tool calls in `6.3` min) to inspect the upstream Go `arkade-os/delegatee` repo on disk AND complete all 7 files solo — at the cost of **8.78M tokens**.
-2. **Heterogeneous "Different Brains" (`Planner -> High-TPS Worker -> Adversarial Diff Reviewer`) Dramatically Beat Solo on Token Efficiency & Beat Slow Workers**:
-   - Pairing `mistral-large-4-0` Planner (`57s`, `106K` tok) -> `deepseek-v4.1-flash-1017` Worker -> `qwen3.8-2.4t-a95b` Reviewer (`R2_C9`) cut total tokens **-68%** (`2.82M` vs `8.78M` in `C6`), while `kimi-k3.1-pro` Planner -> `deepseek-v4.1-flash` Worker (`C3`) hit **`7/7` gates (`88/100`)** with **-20% tokens** (`7.01M`).
-   - **Crucial Discovery on Planner Discipline (`C3` vs `R2_C9`/`R2_C7`)**: In `C3`, `kimi-k3.1-pro` grounded its plan in exact file paths, and `deepseek-v4.1-flash` verified the upstream Go `delegatee` fixture schema (`G2=True`, `7/7` gates). In `R2_C9` and `R2_C7`, `mistral-large-4-0` and `qwen3.8-2.4t` wrote plausible-looking covenant specs from memory without reading upstream `delegatee` fixtures, causing Workers to fail `G2` (`58/100` & `54/100`).
-   - **Mistral Large 4 (`Mistral-Large-4-1T-A52B`, Mistral Vibe engine) Shone on Security & Token Economy**: Homogeneous `mistral-large-4-0 x4` (`R2_C6`) used only **`1.50M` tokens** and was the **only Round 2 pipeline to pass the live HTTP WebAuthn/IDOR security gate (`G5=True`)**, and in `R2_C7` set `redirect: "error"` (which even Round 1 winners missed!).
-   - **Reviewer Prompt Fix Proved Decisive**: Telling `--no-tools` Reviewers explicitly that the diff is inline (`Round 2`) eliminated Round 1's `glm-5.3` tool-announcement no-op — `kimi-k3.1-pro` (`51.8s`), `glm-5.3-prime` (`38.6s`), and `mistral-large-4-0` (`8.3s–102s`) all caught missing `ArkadeExecutorClient.test.js` files and forced Orchestrators to build passing test suites (`R2_C7`, `R2_C8`, `R2_C10`).
+1. **Harness × Model Matrix Proof (Round 3)**:
+   - **Kimi K3.1 Pro Across Harnesses (`kimi-code` > `pi` > `dsh` > `opencode`)**: Once moved off Round 1's `24 tok/s` router bottleneck onto `k3.1-pro-highspeed` / `nous` (`133 tok/s`), `Kimi-K3.1-Pro` jumped from `0/100` to **`7/7` gates across three harnesses** — **Native `kimi-code 2.5.2` won on quality & craft (`87/100`, `884` LOC, `483s`)**, **`pi 1.5.2` won on token economy (`86/100`, `4.28M` tok — `-37%` fewer tokens than `kimi-code`, `486s`)**, **`dsh 0.2.1-rc.5` scored `84/100` (`7/7` gates)**, and **`opencode 1.19.3` scored `76/100` (`6/7` gates)**.
+   - **DeepSeek V4.1 Flash Across Harnesses (`pi` > `dsh` solo > `opencode`, while `kimi-cli + dsh` tied #1 overall!)**:
+     - As a **guided Worker + Finisher**, **`dsh` (`DeepSeek Harness 0.2.1-rc.5`) + `deepseek-v4.1-flash`** paired with **`kimi-code` (`k3.1-pro-highspeed`) Planner** (`R3_H8_combo_native_dream_team`) achieved **`91/100` (`7/7` gates)** and produced the **strongest security hardening of any open-model run across all 3 rounds** (`redirect: "error"`, 1 MiB response cap, config-load `:7081` & `/v1/admin` rejection, `recoveryStore` status fallback without in-process state).
+     - As a **solo unguided agent**, lightweight **`pi 1.5.2` (`91/100`, `380s`, `8.78M` tok)** beat **`dsh` solo (`80/100`, `601s`, `12.70M` tok)** and **`opencode` (`79/100`, **`318s` fastest wall time**, `5.70M` tok)** because `dsh`'s richer agentic toolset caused unguided `deepseek-v4.1-flash` to take `124` turns (`+45%` tokens).
+   - **Planner Harness Matters (`kimi-code` vs `dsh` on `Kimi-K3.1-Pro`)**: `kimi-code(k3.1-pro-hs)` Planner (`R3_H8`, `290K` tok, `22` tool calls) grounded exact invariants -> **`91/100` (`7/7` gates)**, whereas `dsh(k3.1-pro)` Planner (`R3_H9`, `460K` tok) omitted exact fixture schema details -> `45/100` (`3/7` gates).
+   - **Mistral Vibe `3.1.3` (`R3_H7`) & `Qwen4-Max` (`R3_H10`)**: `vibe` improved `mistral-large-4-0` solo from `7/100` (`pi` in R2) to `38/100` (`+31` pts), and `vibe` timed out (`rc=3`) on inline 40KB `--no-tools` diffs due to scanning `~/.agents/skills`; `qwen4-max` Planner (`55K` tok, `7` tool calls) skipped reading upstream Go `delegatee` schemas (`56/100`, `4/7` gates).
 
-### Current #1 Open-Frontier Stack to Beat Closed-Frontier (`95/100`) in Round 3
-- **Planner (Read-Only, Grounded)**: `moonshotai/kimi-k3.1-pro` or `mistralai/mistral-large-4-0` *(must verify exact schemas on disk, `<150K` tok, ~60–90s)*
-- **Workers (Parallel File-Scoped, like Closed Gold!)**: `deepseek/deepseek-v4.1-flash-1017` *(high-TPS multi-file execution)* + `mistralai/mistral-large-4-0` *(security-critical route/boundary hardening)*
-- **Adversarial Diff Reviewer (`--no-tools`, inline diff)**: `moonshotai/kimi-k3.1-pro` or `qwen/qwen3.8-2.4t-a95b` *(catches `:7081`, `redirect: "error"`, empty-hex ScriptNum `0 -> ""`, and CSV bypasses)*
-- **Orchestrator / Finisher**: `deepseek/deepseek-v4.1-flash-1017`
+2. **Recommended Strictly Open-Frontier Production Stack**:
+   - **Maximum Security & Spec Fidelity (`91/100`, `7/7` gates — closest to `95/100` Closed Gold)**:
+     - **Planner**: **`kimi-code 2.5.2` + `kimi-k3.1-pro-highspeed`** *(or `pi` + `nous/kimi-k3.1-pro`, read-only)*
+     - **Worker**: **`dsh` (`deepseek-harness`) or `pi` + `deepseek-v4.1-flash`** *(at `150+ tok/s`)*
+     - **Reviewer (`--no-tools` inline diff)**: **`pi` + `kimi-k3.1-pro` or `mistral-large-4-0`** *(never `vibe` for toolless inline review)*
+     - **Orchestrator / Finisher**: **`dsh` or `pi` + `deepseek-v4.1-flash`**
+   - **Sleekest Single-Agent Fast Mode**:
+     - **`pi` + `deepseek-v4.1-flash`** (`91/100`, `7/7` gates, `380s`) OR **`kimi-code` + `k3.1-pro-highspeed`** (`87/100`, `7/7` gates, `483s`, cleanest `884` LOC) OR **`pi` + `nous/kimi-k3.1-pro`** (`86/100`, `7/7` gates, lowest **`4.28M` tokens**).
 
 ---
 
 ## Reproducing & Running Next Rounds
 
 ```bash
-# Run deterministic 7-gate + blind judge evaluation
+# Run deterministic 7-gate + blind Fable evaluation for any round
 python3 scripts/eval_blind_round1.py
 python3 scripts/eval_blind_round2.py
+python3 scripts/eval_blind_round3.py
 ```

@@ -1,0 +1,737 @@
+diff --git a/ENDPOINTS.md b/ENDPOINTS.md
+index b46ddb6..87de497 100644
+--- a/ENDPOINTS.md
++++ b/ENDPOINTS.md
+@@ -119,3 +119,12 @@ of the user whose invite link the new user arrived through. It is stored in
+ 6. `kind: "arkade_stablecoin"` records buying EURC or USDC on Base out of the Arkade balance. Mechanically it is the same single send into an Intents lockup as a Lightning payment — Lightning is an internal hop in the route — but it is a different act, so it has its own kind and its own approval. `arkade_intents` only. `final_recipient` must be a `0x` EVM address and is validated, so a BOLT11 cannot occupy that slot. It takes `output_asset` (`EURC` / `USDC`), `output_amount` (decimal, token units, provider precision preserved, exponential notation rejected), `output_chain` (`base`), and an optional `route_id`.
+ 7. An EVM `final_recipient` is rejected on every other kind. No other kind has a legitimate `0x` recipient, so one there is a misfiled stablecoin purchase — which would otherwise render an Ark send or Lightning payment approval over a purchase of euros, with every other check passing. Adding the correct kind does not by itself remove the incorrect one.
+ 8. The stablecoin route carries **no** `final_amount_sats`, `invoice`, or `payment_hash`, and all three are rejected rather than ignored. The sats figure inside the route is the internal Lightning hop; binding it would describe a payment the user never makes. What is bound is `funding_amount_sats` — what leaves their balance — plus the output asset, amount and chain. The approval reads "Buy 10.556502 EURC" with the note "Spending 20,060 sats from your Arkade balance."
++
++## Arkade Executor Delegation (issue #172)
++
++Server-side slice of Arkade VTXO offline renewal delegation via the official `arkade-os/delegatee` `executord` public gateway (`ARKADE_EXECUTOR_URL_V4`) and the pinned template (`ARKADE_EXECUTOR_TEMPLATE_ID_V4`, the JCS SHA-256 artifact id of `scripts/fixtures/nuri_delegated_vtxo.json`; proof template `scripts/fixtures/nuri_renew.json`). Disabled (503) unless both are set. The legacy delegate worker (`DELEGATE_WORKER_ENABLED_V4`) stays off and `/v1/delegate` stays sealed; the server only ever calls executord's public `ExecutorService` routes (`/v1/info`, `POST /v1/delegation`, `GET /v1/delegation`) — never `/v1/admin/*`, port 7081, or artifact/template mutation routes.
++
++1. `POST /arkade/executor/delegation/register` — passkey request-auth (`verifyRequestAuth`). Body: `variables` with `exit_delay`, `client_recovery_delay`, `renewal_window`, `max_fee` (positive ints) and optional `expires_at`. `variables.owner` / `variables.client_recovery_key` are bound to the authenticated wallet (`owner` = aggregated MuSig2 key of the token's client signer + derived server key, `client_recovery_key` = client signer); a caller-supplied mismatching value answers 403. Registers the delegation on executord; idempotent re-registration returns the active delegation. 504 with `outcome_unknown: true` when the outcome is uncertain (timeout/network/5xx), 409 when executord deterministically blocked it, 503 when not configured.
++2. `POST /arkade/executor/delegation/status` — passkey request-auth. Body: optional `id` or `address` (default: the caller's own delegation address). The returned delegation is only disclosed when its `template_id` matches the configured template AND `variables.owner` / `variables.client_recovery_key` match the authenticated wallet — otherwise 403 (no cross-wallet IDOR), 404 when absent.
++
++Trust boundary: the wallet binding is derived from the verified WebAuthn token, never from request fields; responses and logs pass through secret redaction, so tokens/seeds/keys never appear in output.
+diff --git a/scripts/fixtures/nuri_delegated_vtxo.json b/scripts/fixtures/nuri_delegated_vtxo.json
+new file mode 100644
+index 0000000..ac4ff4e
+--- /dev/null
++++ b/scripts/fixtures/nuri_delegated_vtxo.json
+@@ -0,0 +1,60 @@
++{
++  "format": "artifact/v1",
++  "contractName": "NuriDelegatedVtxo",
++  "description": "Nuri 4-leaf VTXO with server-delegated offline renewal. MuSig2 spends stay intact (forfeit/exit); the client alone can recover after a delay (clientRecovery); the renew leaf is an arkade covenant that only the server + covenant emulator can satisfy, so a registered delegation lets the executord renew the VTXO while the wallet is offline.",
++  "constructorInputs": [
++    { "name": "owner", "type": "pubkey", "description": "aggregated MuSig2 owner key (client + server)" },
++    { "name": "clientRecoveryKey", "type": "pubkey", "description": "client-only recovery key" },
++    { "name": "exitDelay", "type": "int", "description": "CSV delay for the owner exit path" },
++    { "name": "clientRecoveryDelay", "type": "int", "description": "CSV delay for the client-only recovery path" },
++    { "name": "renewalWindow", "type": "int", "description": "seconds before expiry inside which renewal is allowed" },
++    { "name": "maxFee", "type": "int", "description": "maximum fee the renew covenant may take" }
++  ],
++  "structs": [],
++  "functions": [
++    {
++      "name": "forfeit",
++      "leaf": "forfeit",
++      "script": ["<owner>", "OP_CHECKSIGVERIFY", "<SERVER_KEY>", "OP_CHECKSIG"],
++      "signatures": [
++        { "name": "ownerSig", "type": "schnorr-64", "injected": false, "key": "<owner>" },
++        { "name": "serverSig", "type": "schnorr-64", "injected": true, "key": "<SERVER_KEY>" }
++      ]
++    },
++    {
++      "name": "exit",
++      "leaf": "exit",
++      "script": ["<exitDelay>", "OP_CHECKSEQUENCEVERIFY", "OP_DROP", "<owner>", "OP_CHECKSIG"],
++      "signatures": [
++        { "name": "ownerSig", "type": "schnorr-64", "injected": false, "key": "<owner>" }
++      ]
++    },
++    {
++      "name": "clientRecovery",
++      "leaf": "clientRecovery",
++      "script": ["<clientRecoveryDelay>", "OP_CHECKSEQUENCEVERIFY", "OP_DROP", "<clientRecoveryKey>", "OP_CHECKSIG"],
++      "signatures": [
++        { "name": "clientSig", "type": "schnorr-64", "injected": false, "key": "<clientRecoveryKey>" }
++      ]
++    },
++    {
++      "name": "renew",
++      "leaf": "renew",
++      "covenant": {
++        "kind": "arkade",
++        "checks": [
++          "OP_PUSHEXPIRY <renewalWindow> OP_SUB OP_CHECKTIME OP_VERIFY",
++          "intent.type == \"register\"",
++          "intent.onchain_output_indexes == \"[]\"",
++          "output.value + <maxFee> >= input.value",
++          "OP_PUSHCURRENTINPUTINDEX OP_1SUB 5 0 OP_TUNNEL"
++        ]
++      },
++      "script": ["<SERVER_KEY>", "OP_CHECKSIGVERIFY", "<EMULATOR_KEY:renew>", "OP_CHECKSIG"],
++      "signatures": [
++        { "name": "serverSig", "type": "schnorr-64", "injected": true, "key": "<SERVER_KEY>" },
++        { "name": "emulatorSig", "type": "schnorr-64", "injected": true, "key": "<EMULATOR_KEY:renew>" }
++      ]
++    }
++  ]
++}
+diff --git a/scripts/fixtures/nuri_renew.json b/scripts/fixtures/nuri_renew.json
+new file mode 100644
+index 0000000..956953b
+--- /dev/null
++++ b/scripts/fixtures/nuri_renew.json
+@@ -0,0 +1,38 @@
++{
++  "format": "template/v1",
++  "type": "proof",
++  "name": "nuri_renew",
++  "description": "Offline renewal proof template for NuriDelegatedVtxo: spends the renew leaf, re-locks the full funds (value, locking script, assets) into the renewed VTXO, caps the fee at max_fee, and schedules the delegation to run before expiry.",
++  "artifact": "ed584110dedbf2e933d087c194a6a6130bf31898f4321471cc304029f0076844",
++  "variables": {
++    "owner": "pubkey",
++    "client_recovery_key": "pubkey",
++    "exit_delay": "int",
++    "client_recovery_delay": "int",
++    "renewal_window": "int",
++    "max_fee": "int"
++  },
++  "spend": {
++    "function": "renew",
++    "leaf": "renew"
++  },
++  "outputs": [
++    {
++      "name": "renewed",
++      "value": { "from": "funds" },
++      "locking": { "from": "funds" },
++      "assets": [{ "from": "funds" }]
++    }
++  ],
++  "fees": {
++    "from": "funds",
++    "max": "<max_fee>"
++  },
++  "delegation": {
++    "schedule": {
++      "funds": {
++        "before_expiry_seconds": "<renewal_window>"
++      }
++    }
++  }
++}
+diff --git a/src/ArkadeConfig.js b/src/ArkadeConfig.js
+index 3f544db..7ceeb3d 100644
+--- a/src/ArkadeConfig.js
++++ b/src/ArkadeConfig.js
+@@ -358,6 +358,25 @@ export function loadArkadeConfig(env = process.env) {
+     env.ARKADE_EMULATOR_URL_V4,
+     "https://emulator.arkade.computer",
+   ).replace(/\/+$/, "");
++  // arkade-os `delegatee` executord public gateway (issue #172). Disabled
++  // unless BOTH the URL and the template (artifact) id are set; the legacy
++  // delegate worker (DELEGATE_WORKER_ENABLED_V4) and /v1/delegate stay off.
++  const ARKADE_EXECUTOR_URL_V4 = parseStringEnv(env.ARKADE_EXECUTOR_URL_V4, "").replace(/\/+$/, "");
++  if (ARKADE_EXECUTOR_URL_V4 && /:7081(\/|$)/.test(ARKADE_EXECUTOR_URL_V4)) {
++    throw new Error("ARKADE_EXECUTOR_URL_V4 must not point at the executord admin port 7081");
++  }
++  const ARKADE_EXECUTOR_TEMPLATE_ID_V4 = parseStringEnv(
++    env.ARKADE_EXECUTOR_TEMPLATE_ID_V4,
++    "",
++  ).toLowerCase();
++  if (ARKADE_EXECUTOR_TEMPLATE_ID_V4 && !/^[0-9a-f]{64}$/.test(ARKADE_EXECUTOR_TEMPLATE_ID_V4)) {
++    throw new Error("ARKADE_EXECUTOR_TEMPLATE_ID_V4 must be a 64-char lowercase hex artifact id");
++  }
++  const ARKADE_EXECUTOR_TIMEOUT_MS_V4 = parseIntEnv(
++    env.ARKADE_EXECUTOR_TIMEOUT_MS_V4,
++    "ARKADE_EXECUTOR_TIMEOUT_MS_V4",
++    10_000,
++  );
+   // Lightning receive (LNURL callback and in-app invoice) is on unless this is
+   // set to false. The solver mints receive invoices on the pinned card, so
+   // false is the switch to turn new receives off again. Swaps already created
+@@ -506,6 +525,9 @@ export function loadArkadeConfig(env = process.env) {
+     LNURL_STORE_PATH,
+     ARKADE_NODE_URL,
+     ARKADE_EMULATOR_URL,
++    ARKADE_EXECUTOR_URL_V4,
++    ARKADE_EXECUTOR_TEMPLATE_ID_V4,
++    ARKADE_EXECUTOR_TIMEOUT_MS_V4,
+     ARKADE_SOLVER_CARDS,
+     LNURL_SENDABLE_FROM_ENV,
+     ARKADE_LIGHTNING_SEND_LIMITS: sendLimitsFromCards(ARKADE_SOLVER_CARDS),
+diff --git a/src/ArkadeExecutorClient.js b/src/ArkadeExecutorClient.js
+new file mode 100644
+index 0000000..ac7075b
+--- /dev/null
++++ b/src/ArkadeExecutorClient.js
+@@ -0,0 +1,279 @@
++// Thin client for the official arkade-os `delegatee` `executord` public
++// JSON gateway (issue #172). It talks ONLY to the public ExecutorService
++// surface: GET /v1/info, POST /v1/delegation, GET /v1/delegation. The admin
++// plane (/v1/admin/*, port 7081) and the artifact/template mutation routes
++// (/v1/artifact, /v1/template) are never called from here and are refused if
++// a path ever tries to reach them.
++
++import { sha256 } from "./ArkadeCrypto.js";
++
++const DEFAULT_EXECUTOR_TIMEOUT_MS = 10_000;
++
++// BIP-68 sequence encoding: bit 22 marks 512-second units, bits 0-15 carry
++// the masked value, bit 31 disables the lock.
++const SEQUENCE_TYPE_FLAG = 1 << 22;
++const SEQUENCE_MASK = 0xffff;
++const SECONDS_GRANULARITY = 512;
++
++// Paths the public ExecutorService gateway never serves from a user request.
++const FORBIDDEN_PATH_PATTERN = /\/v1\/(admin|artifact|template)(\/|$)/i;
++
++// Keys whose values must never reach logs or error messages.
++const SECRET_KEY_PATTERN = /(secret|seed|token|passphrase|password|private[_-]?key|authorization|cookie)/i;
++
++/**
++ * Minimal CScriptNum little-endian hex encoding (Bitcoin Script / arkade
++ * BigNum): 0 -> "", positive values append 0x00 when the sign bit would be
++ * set, negative values set the sign bit (0x80) on the last byte.
++ */
++export function encodeScriptNumHex(n) {
++  const value = BigInt(n);
++  if (value === 0n) return "";
++  const negative = value < 0n;
++  let magnitude = negative ? -value : value;
++  const bytes = [];
++  while (magnitude > 0n) {
++    bytes.push(Number(magnitude & 0xffn));
++    magnitude >>= 8n;
++  }
++  const last = bytes.length - 1;
++  if (bytes[last] & 0x80) {
++    bytes.push(negative ? 0x80 : 0x00);
++  } else if (negative) {
++    bytes[last] |= 0x80;
++  }
++  return Buffer.from(bytes).toString("hex");
++}
++
++/**
++ * BIP-68 CSV sequence for { type: "blocks" | "seconds", value }, encoded as
++ * a script number hex. Seconds must be a multiple of 512 and both forms must
++ * fit the 16-bit masked value.
++ */
++export function encodeCsvSequenceHex(timelock) {
++  const type = String(timelock?.type || "").trim().toLowerCase();
++  const value = Number(timelock?.value);
++  if (!Number.isInteger(value) || value <= 0) {
++    throw new Error("timelock value must be a positive integer");
++  }
++  let sequence;
++  if (type === "blocks") {
++    if (value > SEQUENCE_MASK) {
++      throw new Error("blocks timelock exceeds the 16-bit BIP-68 range");
++    }
++    sequence = value;
++  } else if (type === "seconds") {
++    if (value % SECONDS_GRANULARITY !== 0) {
++      throw new Error("seconds timelock must be a multiple of 512 (BIP-68)");
++    }
++    const units = value / SECONDS_GRANULARITY;
++    if (units > SEQUENCE_MASK) {
++      throw new Error("seconds timelock exceeds the 16-bit BIP-68 range");
++    }
++    sequence = SEQUENCE_TYPE_FLAG | units;
++  } else {
++    throw new Error("timelock type must be blocks or seconds");
++  }
++  return encodeScriptNumHex(BigInt(sequence >>> 0));
++}
++
++/** RFC-8785 (JCS) canonical JSON serialization. */
++export function jcsCanonicalize(value) {
++  if (value === null) return "null";
++  if (typeof value === "boolean") return value ? "true" : "false";
++  if (typeof value === "number") {
++    if (!Number.isFinite(value)) throw new Error("JCS cannot serialize non-finite numbers");
++    return JSON.stringify(value);
++  }
++  if (typeof value === "string") return JSON.stringify(value);
++  if (Array.isArray(value)) {
++    return `[${value.map((item) => jcsCanonicalize(item)).join(",")}]`;
++  }
++  if (typeof value === "object") {
++    // Default sort orders by UTF-16 code units, which is exactly the JCS
++    // object key ordering.
++    const keys = Object.keys(value).sort();
++    const parts = keys.map((key) => `${JSON.stringify(key)}:${jcsCanonicalize(value[key])}`);
++    return `{${parts.join(",")}}`;
++  }
++  throw new Error(`JCS cannot serialize value of type ${typeof value}`);
++}
++
++/** RFC-8785 canonical JSON SHA-256 hex of a document. */
++export function computeJcsSha256Hex(doc) {
++  return sha256(Buffer.from(jcsCanonicalize(doc), "utf8")).toString("hex");
++}
++
++/** Deep-clone with secret-looking values replaced, for logs and errors. */
++export function redactSecrets(value) {
++  if (Array.isArray(value)) return value.map(redactSecrets);
++  if (value && typeof value === "object") {
++    const out = {};
++    for (const [key, item] of Object.entries(value)) {
++      out[key] = SECRET_KEY_PATTERN.test(key) ? "[redacted]" : redactSecrets(item);
++    }
++    return out;
++  }
++  return value;
++}
++
++function isLowercaseHex(value) {
++  return typeof value === "string" && /^[0-9a-f]+$/.test(value);
++}
++
++function executorError(message, { status = 0, code, outcomeUnknown = false, blocked = false } = {}) {
++  const error = new Error(message);
++  error.status = status;
++  error.code = code;
++  error.outcomeUnknown = outcomeUnknown;
++  error.blocked = blocked;
++  return error;
++}
++
++/**
++ * Client for executord's public ExecutorService JSON gateway.
++ * cfg carries ARKADE_EXECUTOR_URL_V4, ARKADE_EXECUTOR_TEMPLATE_ID_V4 and
++ * ARKADE_EXECUTOR_TIMEOUT_MS_V4 (see ArkadeConfig.js). Disabled (enabled ===
++ * false) when URL or template id is unset.
++ */
++export function createArkadeExecutorClient({ cfg, fetchImpl = fetch }) {
++  const baseUrl = String(cfg?.ARKADE_EXECUTOR_URL_V4 || "").replace(/\/+$/, "");
++  const templateId = String(cfg?.ARKADE_EXECUTOR_TEMPLATE_ID_V4 || "").trim().toLowerCase();
++  const timeoutMs = Number(cfg?.ARKADE_EXECUTOR_TIMEOUT_MS_V4 || DEFAULT_EXECUTOR_TIMEOUT_MS);
++  const enabled = Boolean(baseUrl && templateId);
++  if (baseUrl && /:7081(\/|$)/.test(baseUrl)) {
++    throw new Error("ARKADE_EXECUTOR_URL_V4 must not point at the executord admin port 7081");
++  }
++
++  async function request(method, path, body) {
++    if (FORBIDDEN_PATH_PATTERN.test(path)) {
++      throw executorError(`refusing to call non-public executord path ${path}`, {
++        code: "EXECUTOR_FORBIDDEN_PATH",
++      });
++    }
++    const controller = new AbortController();
++    const timer = setTimeout(() => controller.abort(), timeoutMs);
++    try {
++      const response = await fetchImpl(`${baseUrl}${path}`, {
++        method,
++        headers: { "content-type": "application/json", accept: "application/json" },
++        body: body === undefined ? undefined : JSON.stringify(body),
++        signal: controller.signal,
++      });
++      const text = await response.text();
++      let parsed = null;
++      try {
++        parsed = text ? JSON.parse(text) : null;
++      } catch {
++        parsed = null;
++      }
++      if (!response.ok) {
++        if (response.status >= 500) {
++          // The server may have processed the write before failing: the
++          // outcome is genuinely unknown.
++          throw executorError(`executord HTTP ${response.status}`, {
++            status: response.status,
++            code: "EXECUTOR_OUTCOME_UNKNOWN",
++            outcomeUnknown: true,
++          });
++        }
++        if (response.status === 400 || response.status === 409) {
++          // Deterministic rejection (ErrBlocked / cancelled): the write did
++          // not happen.
++          throw executorError(`executord rejected delegation: HTTP ${response.status}`, {
++            status: response.status,
++            code: "EXECUTOR_ERR_BLOCKED",
++            blocked: true,
++          });
++        }
++        throw executorError(`executord HTTP ${response.status}`, {
++          status: response.status,
++          code: "EXECUTOR_HTTP_ERROR",
++        });
++      }
++      return parsed;
++    } catch (error) {
++      if (error && error.code && String(error.code).startsWith("EXECUTOR_")) throw error;
++      // Network failure or AbortController timeout: the request may or may
++      // not have reached executord, so the outcome is unknown.
++      const timedOut = error?.name === "AbortError";
++      throw executorError(timedOut ? "executord request timed out" : "executord request failed", {
++        code: "EXECUTOR_OUTCOME_UNKNOWN",
++        outcomeUnknown: true,
++      });
++    } finally {
++      clearTimeout(timer);
++    }
++  }
++
++  async function getInfo() {
++    if (!enabled) throw executorError("arkade executor not configured", { code: "EXECUTOR_NOT_CONFIGURED" });
++    return request("GET", "/v1/info");
++  }
++
++  /**
++   * Register a delegation. Idempotent: a 409 from executord means an active
++   * delegation already exists, so the client re-reads it by address and
++   * returns it as the active delegation.
++   */
++  async function registerDelegation({ templateId: templateIdOverride, variables, expiresAt = 0 }) {
++    if (!enabled) throw executorError("arkade executor not configured", { code: "EXECUTOR_NOT_CONFIGURED" });
++    const templateIdUsed = String(templateIdOverride || templateId).trim().toLowerCase();
++    if (!isLowercaseHex(templateIdUsed) || templateIdUsed.length !== 64) {
++      throw executorError("templateId must be a 64-char lowercase hex artifact id", {
++        code: "EXECUTOR_INVALID_TEMPLATE",
++      });
++    }
++    if (!variables || typeof variables !== "object" || Array.isArray(variables)) {
++      throw executorError("variables required", { code: "EXECUTOR_INVALID_VARIABLES" });
++    }
++    for (const [key, value] of Object.entries(variables)) {
++      if (!isLowercaseHex(value)) {
++        throw executorError(`variable ${key} must be lowercase hex`, {
++          code: "EXECUTOR_INVALID_VARIABLES",
++        });
++      }
++    }
++    if (!Number.isInteger(expiresAt) || expiresAt < 0) {
++      throw executorError("expiresAt must be a non-negative integer", {
++        code: "EXECUTOR_INVALID_EXPIRES_AT",
++      });
++    }
++    const payload = { template_id: templateIdUsed, variables, expires_at: expiresAt };
++    try {
++      const delegation = await request("POST", "/v1/delegation", payload);
++      return { delegation, alreadyActive: false };
++    } catch (error) {
++      if (error?.code === "EXECUTOR_ERR_BLOCKED" && error.status === 409 && isLowercaseHex(variables.owner)) {
++        // Idempotent re-registration: return the active delegation.
++        const existing = await getDelegation({ address: variables.owner }).catch(() => null);
++        if (existing?.delegation) {
++          return { delegation: existing.delegation, alreadyActive: true };
++        }
++      }
++      throw error;
++    }
++  }
++
++  async function getDelegation({ id, address } = {}) {
++    if (!enabled) throw executorError("arkade executor not configured", { code: "EXECUTOR_NOT_CONFIGURED" });
++    const params = new URLSearchParams();
++    if (id != null && String(id).trim()) params.set("id", String(id).trim());
++    if (address != null && String(address).trim()) params.set("address", String(address).trim().toLowerCase());
++    if ([...params.keys()].length === 0) {
++      throw executorError("id or address required", { code: "EXECUTOR_INVALID_QUERY" });
++    }
++    const delegation = await request("GET", `/v1/delegation?${params.toString()}`);
++    return { delegation };
++  }
++
++  return {
++    enabled,
++    baseUrl,
++    templateId,
++    timeoutMs,
++    getInfo,
++    registerDelegation,
++    getDelegation,
++  };
++}
+diff --git a/src/ArkadeServer.js b/src/ArkadeServer.js
+index d85b1d8..2ee830c 100644
+--- a/src/ArkadeServer.js
++++ b/src/ArkadeServer.js
+@@ -73,6 +73,7 @@ import {
+ } from "./ArkadeRecoveryStore.js";
+ import { ARKADE_SDK_VERSION, ARKADE_SWAP_VERSION } from "./ArkadeDependencyVersions.js";
+ import { createBitcoinNameIndexer } from "./ArkadeBitcoinNames.js";
++import { createArkadeExecutorClient, redactSecrets } from "./ArkadeExecutorClient.js";
+ 
+ // Set in startArkadeServer; a profile or boarding write re-reads that user's
+ // Bitcoin addresses for the names lookup (#145).
+@@ -5999,6 +6000,259 @@ async function handleLnurlCallbackGet(_req, res, cfg, lnurlStore, usernameInput,
+   }
+ }
+ 
++// --- Arkade executor delegation (issue #172) -------------------------------
++//
++// Wallet-bound routes over the official arkade-os `delegatee` executord
++// public gateway. The authenticated passkey token fixes the wallet: owner is
++// the aggregated MuSig2 key of (client signer, derived server key) and
++// client_recovery_key is the client signer itself. Caller-supplied owner /
++// client_recovery_key are only ever compared, never trusted.
++
++function executorClientForCfg(cfg) {
++  return createArkadeExecutorClient({ cfg });
++}
++
++function executorConfigured(cfg) {
++  return Boolean(
++    String(cfg.ARKADE_EXECUTOR_URL_V4 || "").trim() && String(cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4 || "").trim(),
++  );
++}
++
++// The wallet's exact delegation identity, derived from the verified token.
++function walletDelegationIdentity(cfg, token) {
++  const clientPk33 = getClientSignerFromToken(token);
++  const derived = getDerivedServerPublicKey(cfg, clientPk33);
++  return {
++    clientPk33,
++    owner: deriveAggregatedPk33(clientPk33, derived.pub),
++    clientRecoveryKey: clientPk33,
++  };
++}
++
++function normalizeDelegationIntVariable(value, name) {
++  if (value == null || value === "") throw new Error(`${name} required`);
++  let parsed;
++  if (typeof value === "number") {
++    parsed = Number.isInteger(value) && value > 0 ? BigInt(value) : null;
++  } else if (typeof value === "string" && /^(0x)?[0-9a-fA-F]+$/.test(value.trim())) {
++    parsed = BigInt(value.trim());
++  } else if (typeof value === "bigint") {
++    parsed = value;
++  }
++  if (parsed == null || parsed <= 0n) throw new Error(`${name} must be a positive integer`);
++  return parsed.toString(16);
++}
++
++function assertBoundVariable(provided, expected, name) {
++  if (provided == null || String(provided).trim() === "") return;
++  if (normalizeHex(provided) !== expected) {
++    const error = new Error(`${name} does not match the authenticated wallet`);
++    error.status = 403;
++    throw error;
++  }
++}
++
++async function handleArkadeExecutorDelegationRegister(req, res, cfg) {
++  let body;
++  try {
++    body = await parseJson(req);
++  } catch (e) {
++    return json(res, 400, { error: "invalid json", details: e.message });
++  }
++
++  let token;
++  try {
++    token = verifyRequestAuth(body, cfg);
++  } catch (e) {
++    logOp("ArkadeServer.executorDelegationRegister", {
++      ok: false,
++      reason: "auth_failed",
++      err: truncate(e.message || e),
++    });
++    return json(res, 401, { error: "auth failed", details: e.message || String(e) });
++  }
++
++  if (!executorConfigured(cfg)) {
++    logOp("ArkadeServer.executorDelegationRegister", {
++      ok: false,
++      cred: truncate(token.cid),
++      reason: "not_configured",
++    });
++    return json(res, 503, { error: "arkade executor not configured" });
++  }
++
++  try {
++    const identity = walletDelegationIdentity(cfg, token);
++    const variablesInput = body.variables && typeof body.variables === "object" ? body.variables : {};
++    // Never trust caller-supplied owner / client_recovery_key: reject on
++    // mismatch, always bind to the authenticated wallet's derived keys.
++    assertBoundVariable(variablesInput.owner, identity.owner, "variables.owner");
++    assertBoundVariable(
++      variablesInput.client_recovery_key,
++      identity.clientRecoveryKey,
++      "variables.client_recovery_key",
++    );
++    const variables = {
++      owner: identity.owner,
++      client_recovery_key: identity.clientRecoveryKey,
++      exit_delay: normalizeDelegationIntVariable(variablesInput.exit_delay, "exit_delay"),
++      client_recovery_delay: normalizeDelegationIntVariable(
++        variablesInput.client_recovery_delay,
++        "client_recovery_delay",
++      ),
++      renewal_window: normalizeDelegationIntVariable(variablesInput.renewal_window, "renewal_window"),
++      max_fee: normalizeDelegationIntVariable(variablesInput.max_fee, "max_fee"),
++    };
++    const expiresAtRaw = body.expires_at ?? body.expiresAt ?? 0;
++    const expiresAt = Number(expiresAtRaw);
++    if (!Number.isInteger(expiresAt) || expiresAt < 0) {
++      return json(res, 400, { error: "expires_at must be a non-negative integer" });
++    }
++
++    const client = executorClientForCfg(cfg);
++    const result = await client.registerDelegation({
++      templateId: cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4,
++      variables,
++      expiresAt,
++    });
++    logOp("ArkadeServer.executorDelegationRegister", {
++      ok: true,
++      cred: truncate(token.cid),
++      owner: truncate(identity.owner),
++      id: truncate(String(result.delegation?.id || "")),
++      alreadyActive: result.alreadyActive,
++    });
++    return json(
++      res,
++      200,
++      withVersionMatrix(cfg, {
++        ok: true,
++        already_active: result.alreadyActive,
++        delegation: redactSecrets(result.delegation),
++      }),
++    );
++  } catch (e) {
++    if (e.status === 403) {
++      logOp("ArkadeServer.executorDelegationRegister", {
++        ok: false,
++        cred: truncate(token.cid),
++        reason: "wallet_mismatch",
++      });
++      return json(res, 403, { error: e.message || "wallet mismatch" });
++    }
++    logOp("ArkadeServer.executorDelegationRegister", {
++      ok: false,
++      cred: truncate(token.cid),
++      err: truncate(e.message || e),
++      outcomeUnknown: e.outcomeUnknown === true,
++    });
++    if (e.outcomeUnknown) {
++      return json(res, 504, {
++        error: "executor outcome unknown; registration may have succeeded",
++        outcome_unknown: true,
++      });
++    }
++    if (e.blocked) {
++      return json(res, 409, { error: "delegation blocked or cancelled by executor", outcome_unknown: false });
++    }
++    return json(res, 400, { error: e.message || String(e), outcome_unknown: false });
++  }
++}
++
++async function handleArkadeExecutorDelegationStatus(req, res, cfg) {
++  let body;
++  try {
++    body = await parseJson(req);
++  } catch (e) {
++    return json(res, 400, { error: "invalid json", details: e.message });
++  }
++
++  let token;
++  try {
++    token = verifyRequestAuth(body, cfg);
++  } catch (e) {
++    logOp("ArkadeServer.executorDelegationStatus", {
++      ok: false,
++      reason: "auth_failed",
++      err: truncate(e.message || e),
++    });
++    return json(res, 401, { error: "auth failed", details: e.message || String(e) });
++  }
++
++  if (!executorConfigured(cfg)) {
++    logOp("ArkadeServer.executorDelegationStatus", {
++      ok: false,
++      cred: truncate(token.cid),
++      reason: "not_configured",
++    });
++    return json(res, 503, { error: "arkade executor not configured" });
++  }
++
++  try {
++    const identity = walletDelegationIdentity(cfg, token);
++    const id = body.id != null ? String(body.id).trim() : "";
++    const address = body.address != null ? normalizeHex(body.address) : "";
++    const client = executorClientForCfg(cfg);
++    // Default lookup is the caller's own delegation address; an explicit id
++    // or address is allowed but the result is verified against the wallet
++    // before it is returned, so another user's delegation is never disclosed.
++    const query = id ? { id } : { address: address || identity.owner };
++    let delegation;
++    try {
++      ({ delegation } = await client.getDelegation(query));
++    } catch (e) {
++      if (e.status === 404) {
++        return json(res, 404, { error: "delegation not found" });
++      }
++      throw e;
++    }
++    const templateId = String(delegation?.template_id || "").toLowerCase();
++    const owner = normalizeHex(delegation?.variables?.owner || "");
++    const recoveryKey = normalizeHex(delegation?.variables?.client_recovery_key || "");
++    if (
++      templateId !== String(cfg.ARKADE_EXECUTOR_TEMPLATE_ID_V4 || "").toLowerCase() ||
++      owner !== identity.owner ||
++      recoveryKey !== identity.clientRecoveryKey
++    ) {
++      logOp("ArkadeServer.executorDelegationStatus", {
++        ok: false,
++        cred: truncate(token.cid),
++        reason: "delegation_not_owned",
++      });
++      return json(res, 403, { error: "delegation does not belong to the authenticated wallet" });
++    }
++    logOp("ArkadeServer.executorDelegationStatus", {
++      ok: true,
++      cred: truncate(token.cid),
++      owner: truncate(identity.owner),
++      id: truncate(String(delegation?.id || "")),
++      status: delegation?.status || "unknown",
++    });
++    return json(
++      res,
++      200,
++      withVersionMatrix(cfg, { ok: true, delegation: redactSecrets(delegation) }),
++    );
++  } catch (e) {
++    if (e.status === 403) {
++      return json(res, 403, { error: e.message || "wallet mismatch" });
++    }
++    logOp("ArkadeServer.executorDelegationStatus", {
++      ok: false,
++      cred: truncate(token.cid),
++      err: truncate(e.message || e),
++      outcomeUnknown: e.outcomeUnknown === true,
++    });
++    if (e.outcomeUnknown) {
++      return json(res, 502, {
++        error: "executor outcome unknown",
++        outcome_unknown: true,
++      });
++    }
++    return json(res, 502, { error: e.message || String(e), outcome_unknown: false });
++  }
++}
++
+ export function startArkadeServer() {
+   const cfg = loadArkadeConfig();
+   const database = createArkadeDatabase(cfg.DATABASE_PATH);
+@@ -6148,6 +6402,12 @@ export function startArkadeServer() {
+       if (req.method === "POST" && routePath === "/arkade/notifications/bind") {
+         return handleNotificationsBind(req, res, cfg, notifications);
+       }
++      if (req.method === "POST" && routePath === "/arkade/executor/delegation/register") {
++        return handleArkadeExecutorDelegationRegister(req, res, cfg);
++      }
++      if (req.method === "POST" && routePath === "/arkade/executor/delegation/status") {
++        return handleArkadeExecutorDelegationStatus(req, res, cfg);
++      }
+       if (req.method === "POST" && routePath === "/arkade/lnurl/register-bootstrap/auth") {
+         return handleLnurlBootstrapAuth(req, res, cfg, lnurlStore);
+       }

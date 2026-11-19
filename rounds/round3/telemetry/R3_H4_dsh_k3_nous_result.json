@@ -1,0 +1,31 @@
+{
+  "id": "R3_H4_dsh_k3_nous",
+  "label": "Solo DeepSeek Harness on Kimi: dsh 0.2.1 + nous/kimi-k3.1-pro",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 601.52,
+  "total_tokens": 7797918,
+  "output_tokens": 32658,
+  "reasoning_tokens": 0,
+  "total_turns": 67,
+  "total_tool_calls": 104,
+  "added_loc": 956,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "harness": "dsh-0.2.1-rc.5",
+      "model": "nous/moonshotai/kimi-k3.1-pro",
+      "rc": -1,
+      "elapsed_s": 601.51,
+      "turns": 67,
+      "tool_calls": 104,
+      "total_tokens": 7797918,
+      "input_tokens": 7765260,
+      "output_tokens": 32658,
+      "reasoning_tokens": 0,
+      "text": "Step 1 of 4: auth regression also passes; comprehensive test file is the remaining implementation item.",
+      "stderr": "\nTIMEOUT after 600s",
+      "stage": "solo_worker"
+    }
+  ]
+}

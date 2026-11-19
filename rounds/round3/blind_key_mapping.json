@@ -1,0 +1,12 @@
+{
+  "CANDIDATE_A": "R3_H10_combo_qwen4_dsh",
+  "CANDIDATE_B": "R3_H3_opencode_k3_nous",
+  "CANDIDATE_C": "R3_H9_combo_dsh_unified",
+  "CANDIDATE_D": "R3_H7_vibe_ml4_native",
+  "CANDIDATE_E": "R3_H8_combo_native_dream_team",
+  "CANDIDATE_F": "R3_H1_kimi_cli_k3_hs",
+  "CANDIDATE_G": "R3_H5_dsh_ds_v4_1_fast",
+  "CANDIDATE_H": "R3_H6_opencode_ds_v4_1_fast",
+  "CANDIDATE_I": "R3_H4_dsh_k3_nous",
+  "CANDIDATE_J": "R3_H2_pi_k3_nous"
+}

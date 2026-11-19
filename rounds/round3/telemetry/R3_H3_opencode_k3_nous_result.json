@@ -1,0 +1,31 @@
+{
+  "id": "R3_H3_opencode_k3_nous",
+  "label": "Solo Opencode Harness: opencode 1.19.3 + nous/kimi-k3.1-pro",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 601.52,
+  "total_tokens": 7859483,
+  "output_tokens": 19857,
+  "reasoning_tokens": 23023,
+  "total_turns": 51,
+  "total_tool_calls": 111,
+  "added_loc": 1056,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "harness": "opencode-1.19.3",
+      "model": "nous/moonshotai/kimi-k3.1-pro",
+      "rc": -1,
+      "elapsed_s": 601.51,
+      "turns": 51,
+      "tool_calls": 111,
+      "total_tokens": 7859483,
+      "input_tokens": 7818049,
+      "output_tokens": 19857,
+      "reasoning_tokens": 23023,
+      "text": "BigNum/JCS vectors verified against official Arkade.",
+      "stderr": "\nTIMEOUT after 600s",
+      "stage": "solo_worker"
+    }
+  ]
+}

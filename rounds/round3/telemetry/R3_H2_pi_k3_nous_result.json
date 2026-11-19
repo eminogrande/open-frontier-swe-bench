@@ -1,0 +1,31 @@
+{
+  "id": "R3_H2_pi_k3_nous",
+  "label": "Solo Generic pi Harness (Fast Control): pi 1.5.2 + nous/kimi-k3.1-pro (133 tok/s)",
+  "open_weights": true,
+  "mode": "solo",
+  "wall_s": 485.82,
+  "total_tokens": 4284586,
+  "output_tokens": 37595,
+  "reasoning_tokens": 17945,
+  "total_turns": 43,
+  "total_tool_calls": 94,
+  "added_loc": 1016,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "harness": "pi-1.5.2",
+      "model": "nous/moonshotai/kimi-k3.1-pro",
+      "rc": 0,
+      "elapsed_s": 485.77,
+      "turns": 43,
+      "tool_calls": 94,
+      "total_tokens": 4284586,
+      "input_tokens": 4246991,
+      "output_tokens": 37595,
+      "reasoning_tokens": 17945,
+      "text": "Implemented Issue #172 server slice.\n\n- Added four-leaf artifact/template fixtures; artifact ID `b9c74e801d6ca75320a33f6fa00e66d19a05959d0a6b52b9a2050b1733f98080`.\n- Added executor client, config, authenticated wallet-bound routes, IDOR protection, error classification, and documentation.\n- Tests: `node --test src/ArkadeExecutorClient.test.js` \u2014 **12 passed**. Existing safe-owner route proof also passed.",
+      "stderr": "",
+      "stage": "solo_worker"
+    }
+  ]
+}
