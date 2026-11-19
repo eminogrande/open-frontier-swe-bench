@@ -1,17 +1,20 @@
-import os, sys, json, time, glob, signal, shutil, tempfile, subprocess, concurrent.futures
+import os, sys, json, time, glob, shutil, tempfile, subprocess, concurrent.futures
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 
-WORK_R4 = "/tmp/subtasks/st7_round4"
-WORK_ST3 = "/tmp/subtasks/st3_gold"
-WORK_ST4 = "/tmp/subtasks/st4_bakeoff"
-NURI_REPO = "/Users/eminmahrt/Developer/nuri-server-musig2-v4-arkade"
-ORIGIN_SHA = "136a54faa0c1af817cf9f829412582291a7ec83f"
+WORK_R4 = "/private/tmp/bench_clean/r4_hermetic"
+CLEAN_ROOT = "/private/tmp/bench_clean"
+BASE_REPO = f"{CLEAN_ROOT}/base_repo"
+BASE_NODE_MODULES = f"{CLEAN_ROOT}/base_node_modules"
+UPSTREAM_DIR = f"{CLEAN_ROOT}/upstream"
+
+WORK_ST3 = "/private/tmp/subtasks/st3_gold"
+WORK_ST4 = "/private/tmp/subtasks/st4_bakeoff"
 
 os.makedirs(WORK_R4, exist_ok=True)
-os.makedirs("/tmp/subtasks/logs", exist_ok=True)
-LOG = open("/tmp/subtasks/logs/st7_round4.log", "w", buffering=1)
+os.makedirs(f"{CLEAN_ROOT}/logs", exist_ok=True)
+LOG = open(f"{CLEAN_ROOT}/logs/r4_hermetic.log", "a", buffering=1)
 
 V3_SKILL = open("/Users/eminmahrt/Developer/agent-prompt-brevity-bench/prompts/V3_caveman_adhd_winner.md").read()
 TASK_PROMPT = open(f"{WORK_ST3}/TASK_PROMPT.md").read()
@@ -20,14 +23,62 @@ st4_provs = json.load(open(f"{WORK_ST4}/models.json"))["providers"]
 NOUS_KEY = st4_provs["nous"]["apiKey"]
 PR_KEY = st4_provs["paymentrequired"]["apiKey"]
 
+SANDBOX_PROFILE = f"{CLEAN_ROOT}/hermetic_agent.sb"
+with open(SANDBOX_PROFILE, "w") as _sbf:
+    _sbf.write("""(version 1)
+(allow default)
+(deny file-read* file-write*
+  (subpath "/private/tmp/subtasks")
+  (subpath "/Users/eminmahrt/Developer/open-frontier-swe-bench")
+  (subpath "/Users/eminmahrt/Developer/nuri-server-musig2-v4-arkade")
+  (subpath "/Users/eminmahrt/Developer/.worktrees")
+  (subpath "/Users/eminmahrt/Developer/_arkade_v4")
+  (subpath "/Users/eminmahrt/.dsh/sessions")
+  (subpath "/Users/eminmahrt/.dsh/skills")
+  (subpath "/Users/eminmahrt/.kimi-code/sessions")
+  (subpath "/Users/eminmahrt/.kimi-code/file-history")
+  (subpath "/Users/eminmahrt/.agents/skills")
+)
+""")
+
+def make_sandbox_profile(current_wt):
+    """Block all reference dirs AND sibling candidate worktrees so parallel runs cannot peek at each other."""
+    other_wts = [
+        os.path.realpath(p)
+        for p in glob.glob(f"{WORK_R4}/wt_*")
+        if os.path.realpath(p) != os.path.realpath(current_wt)
+    ]
+    extra = "\n".join(f'  (subpath "{p}")' for p in other_wts)
+    sf = tempfile.NamedTemporaryFile("w", suffix=".sb", delete=False)
+    sf.write(f"""(version 1)
+(allow default)
+(deny file-read* file-write*
+  (subpath "/private/tmp/subtasks")
+  (subpath "/Users/eminmahrt/Developer/open-frontier-swe-bench")
+  (subpath "/Users/eminmahrt/Developer/nuri-server-musig2-v4-arkade")
+  (subpath "/Users/eminmahrt/Developer/.worktrees")
+  (subpath "/Users/eminmahrt/Developer/_arkade_v4")
+  (subpath "/Users/eminmahrt/.dsh/sessions")
+  (subpath "/Users/eminmahrt/.dsh/skills")
+  (subpath "/Users/eminmahrt/.kimi-code/sessions")
+  (subpath "/Users/eminmahrt/.kimi-code/file-history")
+  (subpath "/Users/eminmahrt/.agents/skills")
+{extra}
+)
+""")
+    sf.close()
+    return sf.name
+
 def log(msg):
     LOG.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
     print(msg, flush=True)
 
-def run_cmd_pg(cmd, cwd, env, timeout):
+def run_cmd_sandboxed(cmd, cwd, env, timeout, sandbox=True):
     t0 = time.time()
+    sb_file = make_sandbox_profile(cwd) if sandbox else None
+    full_cmd = (["sandbox-exec", "-f", sb_file] + cmd) if sb_file else cmd
     proc = subprocess.Popen(
-        cmd, cwd=cwd, env=env,
+        full_cmd, cwd=cwd, env=env,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, start_new_session=True
     )
@@ -36,14 +87,17 @@ def run_cmd_pg(cmd, cwd, env, timeout):
         rc = proc.returncode
     except subprocess.TimeoutExpired:
         try:
-            os.killpg(proc.pid, signal.SIGTERM)
+            os.killpg(proc.pid, 15)
             time.sleep(1.5)
-            os.killpg(proc.pid, signal.SIGKILL)
+            os.killpg(proc.pid, 9)
         except Exception:
             pass
         out_s, err_s = proc.communicate()
         rc = -1
         err_s = (err_s or "") + f"\nTIMEOUT after {timeout}s"
+    finally:
+        if sb_file and os.path.exists(sb_file):
+            os.unlink(sb_file)
     return rc, out_s or "", (err_s or "")[-500:], round(time.time() - t0, 2)
 
 NOUS_MODELS = [
@@ -93,7 +147,7 @@ def run_pi(provider, model, prompt, cwd, tools=True, timeout=540):
             "--provider", provider, "--model", model, "--thinking", "max",
             "--", prompt
         ]
-        rc, out_s, err_s, elapsed = run_cmd_pg(cmd, cwd, env, timeout)
+        rc, out_s, err_s, elapsed = run_cmd_sandboxed(cmd, cwd, env, timeout, sandbox=True)
         tot_tok = in_tok = out_tok = rsn_tok = turns = tool_calls = 0
         final_txt = ""
         for line in out_s.splitlines():
@@ -121,6 +175,10 @@ def run_pi(provider, model, prompt, cwd, tools=True, timeout=540):
         shutil.rmtree(ag, ignore_errors=True)
 
 def run_dsh(provider, model, prompt, cwd, tools=True, timeout=540):
+    dsh_home = tempfile.mkdtemp(prefix="r4-dsh-home-")
+    os.symlink(os.path.expanduser("~/.dsh/profiles"), f"{dsh_home}/profiles")
+    os.makedirs(f"{dsh_home}/sessions", exist_ok=True)
+    os.makedirs(f"{dsh_home}/skills", exist_ok=True)
     patch_f = tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False)
     v3_indented = V3_SKILL.replace("\n", "\n      ")
     disable_tools_block = "" if tools else "\n".join(
@@ -167,11 +225,12 @@ def run_dsh(provider, model, prompt, cwd, tools=True, timeout=540):
     patch_f.close()
     try:
         env = os.environ.copy()
+        env["DSH_HOME"] = dsh_home
         env["ROUTER_INTERNAL_KEY"] = PR_KEY
         env["NOUS_API_KEY"] = NOUS_KEY
         env["DSH_PERMISSION_MODE"] = "danger-full-access"
         cmd = ["/Users/eminmahrt/.volta/bin/dsh", "--profile", "headless", "--patch", patch_f.name, "--json", prompt]
-        rc, out_s, err_s, elapsed = run_cmd_pg(cmd, cwd, env, timeout)
+        rc, out_s, err_s, elapsed = run_cmd_sandboxed(cmd, cwd, env, timeout, sandbox=True)
         tot_tok = in_tok = out_tok = rsn_tok = steps = tool_calls = 0
         final_txt = last_text = ""
         for line in out_s.splitlines():
@@ -201,11 +260,18 @@ def run_dsh(provider, model, prompt, cwd, tools=True, timeout=540):
     finally:
         if os.path.exists(patch_f.name):
             os.unlink(patch_f.name)
+        shutil.rmtree(dsh_home, ignore_errors=True)
 
 def run_kimi_cli(model_alias, prompt, cwd, timeout=540):
+    kimi_home = tempfile.mkdtemp(prefix="r4-kimi-home-")
     empty_skills = tempfile.mkdtemp(prefix="r4-kimi-skills-")
+    for item in ["config.toml", "credentials", "oauth", "device_id", "region"]:
+        src = os.path.expanduser(f"~/.kimi-code/{item}")
+        if os.path.exists(src):
+            shutil.copytree(src, f"{kimi_home}/{item}", symlinks=True) if os.path.isdir(src) else shutil.copy2(src, f"{kimi_home}/{item}")
     try:
         env = os.environ.copy()
+        env["KIMI_CODE_HOME"] = kimi_home
         cmd = [
             "/Users/eminmahrt/.kimi-code/bin/kimi",
             "--skills-dir", empty_skills,
@@ -213,7 +279,7 @@ def run_kimi_cli(model_alias, prompt, cwd, timeout=540):
             "--output-format", "stream-json",
             "-p", f"{V3_SKILL}\n\n{prompt}"
         ]
-        rc, out_s, err_s, elapsed = run_cmd_pg(cmd, cwd, env, timeout)
+        rc, out_s, err_s, elapsed = run_cmd_sandboxed(cmd, cwd, env, timeout, sandbox=True)
         tot_tok = in_tok = out_tok = rsn_tok = steps = tool_calls = 0
         final_txt = session_id = ""
         for line in out_s.splitlines():
@@ -227,7 +293,7 @@ def run_kimi_cli(model_alias, prompt, cwd, timeout=540):
             elif ev.get("type") == "session.resume_hint":
                 session_id = ev.get("session_id", "")
         if session_id:
-            for wf in glob.glob(os.path.expanduser(f"~/.kimi-code/sessions/**/{session_id}/agents/*/wire.jsonl"), recursive=True):
+            for wf in glob.glob(f"{kimi_home}/sessions/**/{session_id}/agents/*/wire.jsonl", recursive=True):
                 for wl in open(wf, errors="ignore"):
                     if '"usage.record"' in wl:
                         try:
@@ -250,6 +316,7 @@ def run_kimi_cli(model_alias, prompt, cwd, timeout=540):
         }
     finally:
         shutil.rmtree(empty_skills, ignore_errors=True)
+        shutil.rmtree(kimi_home, ignore_errors=True)
 
 def dispatch(spec, prompt, cwd, tools=True, timeout=540):
     h = spec["harness"]
@@ -261,14 +328,13 @@ def dispatch(spec, prompt, cwd, tools=True, timeout=540):
         return run_kimi_cli(spec["model"], prompt, cwd, timeout=timeout)
     raise ValueError(f"Unknown harness: {h}")
 
-# 8 Round 4 Open-Frontier Beat-Gold Pipelines (100% open weights!)
+# 8 Round 4 Open-Frontier Beat-Gold Pipelines (100% open weights, hermetically sandboxed!)
 KIMI_PLAN = {"harness": "kimi", "model": "kimi-code/k3.1-pro-highspeed"}
-DSH_DS41 = {"harness": "dsh", "provider": "402router", "model": "deepseek-v4.1-flash-abliterated"}
-PI_DS41  = {"harness": "pi",  "provider": "pr",        "model": "deepseek-v4.1-flash-abliterated"}
+DSH_DS41 = {"harness": "dsh", "provider": "nous",      "model": "deepseek/deepseek-v4.1-flash-1017"}
+PI_DS41  = {"harness": "pi",  "provider": "nous",      "model": "deepseek/deepseek-v4.1-flash-1017"}
 REV_KIMI = {"harness": "pi",  "provider": "nous",      "model": "moonshotai/kimi-k3.1-pro"}
 REV_ML4  = {"harness": "pi",  "provider": "nous",      "model": "mistralai/mistral-large-4-0"}
 PI_MM31  = {"harness": "pi",  "provider": "nous",      "model": "minimax/minimax-m3.1-flash"}
-PI_HY4   = {"harness": "pi",  "provider": "nous",      "model": "tencent/hy4"}
 KIMI_W   = {"harness": "kimi","model": "kimi-code/k3.1-pro-highspeed"}
 
 PIPELINES = [
@@ -324,12 +390,13 @@ PIPELINES = [
 ]
 
 def setup_wt(cid):
+    """Create a fresh standalone git clone (ZERO shared .git/worktrees metadata!) + clean node_modules symlink."""
     wt = f"{WORK_R4}/wt_{cid}"
     if os.path.exists(wt):
-        subprocess.run(["git", "worktree", "remove", "--force", wt], cwd=NURI_REPO)
-    subprocess.run(["git", "worktree", "add", "--detach", wt, ORIGIN_SHA], cwd=NURI_REPO, check=True)
-    if not os.path.exists(f"{wt}/node_modules"):
-        os.symlink("/tmp/subtasks/st2_audit/nuri-server-wt/node_modules", f"{wt}/node_modules")
+        shutil.rmtree(wt)
+    subprocess.run(["git", "clone", "-q", BASE_REPO, wt], check=True)
+    subprocess.run(["git", "remote", "remove", "origin"], cwd=wt, check=True)
+    os.symlink(BASE_NODE_MODULES, f"{wt}/node_modules")
     return wt
 
 def clean_wt_diff(wt):
@@ -372,19 +439,19 @@ COMPLETE GIT DIFF:
 def run_pipeline(cfg):
     cid = cfg["id"]
     wt = setup_wt(cid)
-    log(f"[{cid}] Starting ({cfg['label']})...")
+    log(f"[{cid}] Starting hermetic run ({cfg['label']})...")
     stages = []
     t_start = time.time()
 
     is_parallel = cfg["mode"] in ("parallel_gold", "parallel_hetero")
     plan_extra = (
         "\nDivide execution into 3 strictly disjoint file slices with exact exported symbol names/signatures so Wave-1 workers run in parallel without conflicts:\n"
-        "- Slice A: `contracts/arkade/nuri_delegated_vtxo.json`, `contracts/arkade/nuri_renew.json`, `src/ArkadeCovenant.js`\n"
+        "- Slice A: `scripts/fixtures/nuri_delegated_vtxo.json`, `scripts/fixtures/nuri_renew.json`\n"
         "- Slice B: `src/ArkadeConfig.js`, `src/ArkadeExecutorClient.js`\n"
         "- Slice C: `src/ArkadeServer.js`, `ENDPOINTS.md`, `src/ArkadeExecutorClient.test.js`\n"
         if is_parallel else ""
     )
-    plan_prompt = f"""ROLE: Planner / Architect. Do NOT edit files. Inspect exact relevant lines in `src/ArkadeServer.js`, `src/ArkadeConfig.js`, `src/ArkadeNotifications.js`, `ENDPOINTS.md`, and any upstream reference repos on disk. Output a crisp atomic implementation blueprint (<400 words) covering exact file edits, existing helpers to reuse (`verifyRequestAuth`, `getClientSignerFromToken`, `getDerivedServerPublicKey`, `deriveAggregatedPk33`), exact schema/encoding invariants, and security boundaries.
+    plan_prompt = f"""ROLE: Planner / Architect. Do NOT edit files. Inspect exact relevant lines in `src/ArkadeServer.js`, `src/ArkadeConfig.js`, `src/ArkadeNotifications.js`, `ENDPOINTS.md`, and the upstream reference repos in `{UPSTREAM_DIR}/delegatee` and `{UPSTREAM_DIR}/emulator`. Output a crisp atomic implementation blueprint (<400 words) covering exact file edits, existing helpers to reuse (`verifyRequestAuth`, `getClientSignerFromToken`, `getDerivedServerPublicKey`, `deriveAggregatedPk33`), exact schema/encoding invariants, and security boundaries.
 VERBATIM SPEC RULE: Copy ALL exact exported function/symbol names, JSON field keys, HTTP route paths, env var names, error codes, and file paths VERBATIM from the TASK — never paraphrase or rename public identifiers.{plan_extra}
 
 TASK:
@@ -395,7 +462,7 @@ TASK:
     log(f"[{cid}] Planner done: {s_plan['total_tokens']} tok, {s_plan['elapsed_s']}s")
 
     if not is_parallel:
-        work_prompt = f"""ROLE: Worker. Implement the task completely with minimal clean code and run `node --test src/ArkadeExecutorClient.test.js` until green.
+        work_prompt = f"""ROLE: Worker. Implement the task completely with minimal clean code (upstream OSS repos `{UPSTREAM_DIR}/delegatee` and `{UPSTREAM_DIR}/emulator` are available read-only if needed) and run `node --test src/ArkadeExecutorClient.test.js` until green.
 
 PLANNER BLUEPRINT:
 {s_plan['text']}
@@ -411,14 +478,14 @@ EXACT TASK SPECIFICATION:
         w_cli_spec = cfg.get("worker_cli") or cfg["worker"]
         w_srv_spec = cfg.get("worker_srv") or cfg["worker"]
 
-        p_cov = f"""ROLE: Parallel Worker A (Covenant & Encoding ONLY). Edit/create ONLY `contracts/arkade/nuri_delegated_vtxo.json`, `contracts/arkade/nuri_renew.json`, and `src/ArkadeCovenant.js`. Do NOT touch any other file! Verify hashes & encoding invariants with `node -e`.
+        p_cov = f"""ROLE: Parallel Worker A (Fixtures ONLY). Create ONLY `scripts/fixtures/nuri_delegated_vtxo.json` and `scripts/fixtures/nuri_renew.json` (do NOT duplicate fixtures anywhere else or touch `src/`!). Upstream OSS `{UPSTREAM_DIR}/delegatee` and `{UPSTREAM_DIR}/emulator` are available read-only. Verify RFC-8785 JCS SHA-256 artifact ID match with `node -e`.
 
 PLANNER BLUEPRINT:
 {s_plan['text']}
 
 EXACT TASK SPECIFICATION:
 {TASK_PROMPT}"""
-        p_cli = f"""ROLE: Parallel Worker B (Config & Executor Client ONLY). Edit/create ONLY `src/ArkadeConfig.js` and `src/ArkadeExecutorClient.js`. Do NOT touch `contracts/`, `src/ArkadeCovenant.js`, `src/ArkadeServer.js`, or `ENDPOINTS.md`! Enforce all config, HTTP boundary, and uncertain-outcome invariants per spec.
+        p_cli = f"""ROLE: Parallel Worker B (Config & Executor Client ONLY). Edit/create ONLY `src/ArkadeConfig.js` and `src/ArkadeExecutorClient.js`. Do NOT touch `scripts/fixtures/`, `src/ArkadeServer.js`, or `ENDPOINTS.md`! Enforce all config, HTTP boundary, and uncertain-outcome invariants per spec.
 
 PLANNER BLUEPRINT:
 {s_plan['text']}
@@ -434,7 +501,7 @@ EXACT TASK SPECIFICATION:
         stages.extend([s_cov, s_cli])
         log(f"[{cid}] Wave-1 parallel done: cov={s_cov['elapsed_s']}s({s_cov['total_tokens']}t) cli={s_cli['elapsed_s']}s({s_cli['total_tokens']}t)")
 
-        p_srv = f"""ROLE: Wave-2 Integration Worker C (Server Routes, Tests & Docs). Wave-1 workers ALREADY wrote `contracts/arkade/*`, `src/ArkadeCovenant.js`, `src/ArkadeConfig.js`, and `src/ArkadeExecutorClient.js`. Inspect their exact exports first, then wire `src/ArkadeServer.js`, update `ENDPOINTS.md`, and write comprehensive unit + live-HTTP auth/IDOR/spoofing tests in `src/ArkadeExecutorClient.test.js`. Fix any integration mismatch if needed and run `node --test src/ArkadeExecutorClient.test.js` AND `node scripts/notifications-bind-proof.mjs` until both pass!
+        p_srv = f"""ROLE: Wave-2 Integration Worker C (Server Routes, Tests & Docs). Wave-1 workers ALREADY wrote `scripts/fixtures/*`, `src/ArkadeConfig.js`, and `src/ArkadeExecutorClient.js`. Inspect their exact exports first, then wire `src/ArkadeServer.js`, update `ENDPOINTS.md`, and write comprehensive unit + live-HTTP auth/IDOR/spoofing tests in `src/ArkadeExecutorClient.test.js`. Fix any integration mismatch if needed and run `node --test src/ArkadeExecutorClient.test.js` AND `node scripts/notifications-bind-proof.mjs` until both pass!
 
 PLANNER BLUEPRINT:
 {s_plan['text']}
@@ -446,7 +513,6 @@ EXACT TASK SPECIFICATION:
         stages.append(s_srv)
         log(f"[{cid}] Wave-2 integration done: {s_srv['elapsed_s']}s({s_srv['total_tokens']}t)")
 
-    # Hard onYield Verification Gate (ported from pi-durable-swarm: real test + regression execution, up to 2 auto-retries before review!)
     def run_hard_gate(wt_dir):
         test_file = f"{wt_dir}/src/ArkadeExecutorClient.test.js"
         if not os.path.exists(test_file):
@@ -501,7 +567,7 @@ REVIEWER FINDINGS:
     added_loc = sum(1 for l in final_diff.splitlines() if l.startswith("+") and not l.startswith("+++") and l[1:].strip())
 
     res = {
-        "id": cid, "label": cfg["label"], "open_weights": True, "mode": cfg["mode"],
+        "id": cid, "label": cfg["label"], "open_weights": True, "hermetic_sandbox": True, "mode": cfg["mode"],
         "wall_s": wall_s,
         "total_tokens": sum(s["total_tokens"] for s in stages),
         "output_tokens": sum(s["output_tokens"] for s in stages),
@@ -520,15 +586,25 @@ def run_group(cids):
     return [run_pipeline(c) for c in PIPELINES if c["id"] in cids]
 
 if __name__ == "__main__":
-    groups = [
-        ["R4_P1_dream_kimi_rev", "R4_P4_parallel_dsh_gold_parity"],
-        ["R4_P2_dream_ml4_rev", "R4_P5_parallel_pi_lean"],
-        ["R4_P3_dream_dual_rev", "R4_P6_lean_pi_dual_rev"],
-        ["R4_P7_minimax_m31_worker", "R4_P8_parallel_hetero_kimi_ds"],
-    ]
+    only = set(sys.argv[1:])
+    if only:
+        to_run = [c["id"] for c in PIPELINES if c["id"] in only]
+        groups = [to_run[i::4] for i in range(4)]
+        groups = [g for g in groups if g]
+    else:
+        groups = [
+            ["R4_P1_dream_kimi_rev", "R4_P4_parallel_dsh_gold_parity"],
+            ["R4_P2_dream_ml4_rev", "R4_P5_parallel_pi_lean"],
+            ["R4_P3_dream_dual_rev", "R4_P6_lean_pi_dual_rev"],
+            ["R4_P7_minimax_m31_worker", "R4_P8_parallel_hetero_kimi_ds"],
+        ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
-        results = []
         for f in [ex.submit(run_group, g) for g in groups]:
-            results.extend(f.result())
+            f.result()
+    results = []
+    for c in PIPELINES:
+        rp = f"{WORK_R4}/{c['id']}_result.json"
+        if os.path.exists(rp):
+            results.append(json.load(open(rp)))
     json.dump(results, open(f"{WORK_R4}/round4_pipelines_raw.json", "w"), indent=2)
-    log("ALL_8_ROUND4_PIPELINES_COMPLETE")
+    log("ALL_ROUND4_HERMETIC_PIPELINES_COMPLETE")

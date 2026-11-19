@@ -1,0 +1,10 @@
+{
+  "CANDIDATE_A": "R4_P6_lean_pi_dual_rev",
+  "CANDIDATE_B": "R4_P4_parallel_dsh_gold_parity",
+  "CANDIDATE_C": "R4_P3_dream_dual_rev",
+  "CANDIDATE_D": "R4_P8_parallel_hetero_kimi_ds",
+  "CANDIDATE_E": "R4_P1_dream_kimi_rev",
+  "CANDIDATE_F": "R4_P7_minimax_m31_worker",
+  "CANDIDATE_G": "R4_P2_dream_ml4_rev",
+  "CANDIDATE_H": "R4_P5_parallel_pi_lean"
+}

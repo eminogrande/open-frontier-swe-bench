@@ -1,0 +1,82 @@
+```json
+{
+  "ranking": ["CANDIDATE_B", "CANDIDATE_E", "CANDIDATE_A", "CANDIDATE_G", "CANDIDATE_D", "CANDIDATE_C", "CANDIDATE_H", "CANDIDATE_F"],
+  "scores": {
+    "CANDIDATE_A": {
+      "correctness_25": 23,
+      "security_25": 19,
+      "craft_brevity_25": 21,
+      "tests_docs_25": 22,
+      "total_100": 85,
+      "key_strengths": "7/7 gates; byte-exact gold fixtures; strict JCS (rejects undefined/cycles); streamed 1 MiB response cap; timeout race survives a fetch that ignores abort; ErrBlocked mapped to 409; upstream body never echoed; clear docs plus .env.example.",
+      "flaws_found": "No `redirect: \"error\"` on outbound fetch in the visible client; no port 7081 or /v1/admin guard in config or client; invalid URL silently disables instead of failing; GET failures also tagged outcomeUnknown; 408/429 treated as permanent; default status re-registers (a mutation on a read route); extra ARKADE_EXECUTOR_ENABLED_V4 config key."
+    },
+    "CANDIDATE_B": {
+      "correctness_25": 23,
+      "security_25": 23,
+      "craft_brevity_25": 21,
+      "tests_docs_25": 22,
+      "total_100": 90,
+      "key_strengths": "7/7 gates; exact fixtures; reuses existing `bip68SequenceFromCsv` and `sha256` helpers; `redirect: \"error\"`; 7081 and /v1/admin guards in both config and client (fail closed); bounded stream read; secret refusal plus response redaction; only POST classified outcome-unknown; JCS rejects lone surrogates and non-plain objects; precise trust-boundary docs.",
+      "flaws_found": "Client is about 500 lines with some speculative fallbacks (response.json path, bare-payload delegation shape); variable names allow uppercase and values allow odd-length hex; bad URL silently disables rather than throwing at config load; default status re-registers; no template-ID format check in config."
+    },
+    "CANDIDATE_C": {
+      "correctness_25": 21,
+      "security_25": 20,
+      "craft_brevity_25": 20,
+      "tests_docs_25": 21,
+      "total_100": 82,
+      "key_strengths": "7/7 gates; variable allowlist pinned to the template; `redirect: \"error\"` plus explicit 3xx refusal; body read under deadline; template-ID mismatch refused in client; config validates 64-hex template ID; docs explain outcome_unknown well.",
+      "flaws_found": "nuri_renew.json adds non-spec `index: 0` and `packets.output_index` fields; config throws when only one of URL/template is set (spec says disabled); no 7081 or /v1/admin guard; getDelegation throws 409 for a cancelled delegation and swallows 404 to null; all 4xx become permanent, and 409 is always labelled blocked; status has no default lookup; timeout floored at 1000 ms; errors lack consistent codes for unconfigured state; camelCase normalisation boilerplate."
+    },
+    "CANDIDATE_D": {
+      "correctness_25": 21,
+      "security_25": 20,
+      "craft_brevity_25": 21,
+      "tests_docs_25": 21,
+      "total_100": 83,
+      "key_strengths": "7/7 gates; exact artifact; `redirect: \"error\"` plus 3xx refusal; deadline races both fetch and body read; strict payload allowlist; default status uses the stored wallet address instead of re-registering; variable values never included in errors.",
+      "flaws_found": "LOWERCASE_HEX requires at least one character, so a zero-valued variable (`encodeScriptNumHex(0)` is `\"\"`, e.g. max_fee 0) is rejected; non-string variables are coerced with String(); encodeScriptNumHex accepts anything BigInt() takes (strings, booleans); snake_case POST body instead of the gateway's camelCase; no 7081 or /v1/admin guard; no ErrBlocked classification in client; docs end with a paragraph of filler."
+    },
+    "CANDIDATE_E": {
+      "correctness_25": 23,
+      "security_25": 22,
+      "craft_brevity_25": 21,
+      "tests_docs_25": 22,
+      "total_100": 88,
+      "key_strengths": "7/7 gates; exact template; config and client validate 64-hex template ID; client rejects port 7081, credentials, query and fragment; `redirect: \"error\"`; bounded streaming read with content-length precheck; 408/429 not treated as deterministic; ErrBlocked mapped to 409 without echoing the body; secret-named variables refused; crisp docs.",
+      "flaws_found": "No /v1/admin path guard visible; URL validation throws at client construction rather than at config load; client exceeds 430 lines with repeated error construction; default status re-registers; blocked detection relies on a text regex."
+    },
+    "CANDIDATE_F": {
+      "correctness_25": 19,
+      "security_25": 17,
+      "craft_brevity_25": 19,
+      "tests_docs_25": 14,
+      "total_100": 69,
+      "key_strengths": "Exact artifact; JCS with surrogate and depth checks; 2xx with unreadable body classified outcome-unknown; bounded body read; live auth/IDOR gate passes.",
+      "flaws_found": "G1 fails (its own test suite does not pass); template adds non-spec `index` and `packets` fields; no `redirect: \"error\"`; no 7081 or /v1/admin guard; no config validation; non-empty hex requirement rejects zero-valued variables; every 409 is assumed blocked; convoluted pending/release/timeout plumbing; docs omit 502/504 outcome_unknown, 401 and secret handling."
+    },
+    "CANDIDATE_G": {
+      "correctness_25": 22,
+      "security_25": 18,
+      "craft_brevity_25": 22,
+      "tests_docs_25": 22,
+      "total_100": 84,
+      "key_strengths": "7/7 gates; shortest client (about 310 lines); reuses `sha256` from ArkadeCrypto; variable allowlist; strict integer typing; recursive sensitive-key refusal; 408/429/5xx treated as uncertain; broad encoding tests; clear docs.",
+      "flaws_found": "No `redirect: \"error\"`; no response size bound; no URL, 7081 or /v1/admin validation anywhere; EXECUTOR_OUTCOME_UNKNOWN code reused on GET errors with outcomeUnknown false; body read happens after the timer is cleared, so it has no deadline; sensitive-field error message includes the key path; timeout floored at 1000 ms; all other 4xx collapsed to 400; default status re-registers."
+    },
+    "CANDIDATE_H": {
+      "correctness_25": 17,
+      "security_25": 22,
+      "craft_brevity_25": 17,
+      "tests_docs_25": 21,
+      "total_100": 77,
+      "key_strengths": "`redirect: \"error\"`; port 7081 guard; bounded read under an abort race; secret refusal on every request body; cancelled status mapped to ErrBlocked 409; template_id mismatch returns 403 before reaching the executor; concise, accurate docs.",
+      "flaws_found": "G2 fails: the template's extra `index: 0` is rejected by the Go compiler and changes the content ID contract; client is about 630 lines with alias-normalisation and defensive fallbacks; template ID only loosely validated; no /v1/admin path guard; throws on a cancelled delegation even for status reads; default status re-registers."
+    }
+  },
+  "overall_winner_blind": "CANDIDATE_B",
+  "beat_gold_95": [],
+  "synthesis": "The top candidates (B, E) paired byte-exact fixtures with real upstream hardening — `redirect: \"error\"`, port 7081 and admin guards, bounded reads, and outcome-unknown limited to the POST — while the mid-pack (A, G, D, C) passed all gates but lacked redirect or admin-port guards, or carried encoding and fixture deviations such as rejecting zero-valued hex or adding template fields. H and F each failed a gate (Go fixture compile and own tests respectively), which capped them regardless of other merits. No candidate beat the 95 Gold anchor: none matched its config-time URL, template and timeout validation combined with recoveryStore consistency and a whitelisted delegation view, and I could only judge the route and test code from truncated diffs, so those two axes lean on the gate results."
+}
+```

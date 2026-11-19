@@ -2,7 +2,32 @@
 
 Empirical, double-blind software-engineering benchmark finding the **best strictly OPEN-FRONTIER model + CLI harness stack** across **Planner -> Worker -> Reviewer -> Orchestrator** — using a **Closed-Frontier Gold PR (`95/100`, `7/7` gates)** solely as the target bar to beat.
 
-Every round is committed here with full raw stage-by-stage telemetry, unified `.patch` diffs, anonymized blind-judge mappings, runner harnesses, and open-weights catalog audits.
+Every round is committed here with full raw stage-by-stage telemetry, unified `.patch` diffs, anonymized blind-judge mappings, runner harnesses, and open-weights catalog audits. See [`CHANGELOG.md`](CHANGELOG.md) for chronological updates, fixes, and security postmortems.
+
+---
+
+## Round 4 Results (`rounds/round4/`) — Hermetic Sandboxed Parallel & Dual-Review Pipelines
+
+> **Sandbox-Leak Postmortem & Hermetic Fix (2026-11-19):** An initial un-sandboxed Round 4 run using `git worktree` was **invalidated and discarded** after forensic audit caught `R4_P2` (`dsh`) running `git worktree list` and applying `/tmp/subtasks/st3_gold/gold_final.patch` (`95/100` fake). Round 4 below was re-run from scratch under **4-layer hermetic isolation** ([`scripts/run_round4_beat_gold.py`](scripts/run_round4_beat_gold.py)): standalone `git archive` -> `git clone` (zero worktree metadata), macOS kernel `sandbox-exec` blocking all reference/host/sibling dirs, and ephemeral `DSH_HOME`/`KIMI_CODE_HOME` with zero skills (`0%` gold-patch leakage verified).
+
+| Rank | Pipeline | Open Weights? | Architecture (`Planner -> Worker(s) -> Review -> Finisher`) | Gates (`7`) | Blind Score (`/100`) | Wall (`s`) | Tokens | LOC |
+| :---: | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: |
+| *Target* | `GOLD_carbon_fable` *(Closed Ref)* | No | `3x gemini-4-carbon -> claude-fable-5.2` | **`7/7`** | **`95/100`** | `~190s` | `~145K` | `~1,150` |
+| **1** | `R4_P4_parallel_dsh_gold_parity` | **Yes** | `kimi-cli(k3.1-hs)` -> `[2x dsh(ds-v4.1) \|\| -> dsh]` -> `[pi(k3.1) \|\| pi(ml4)]` -> `dsh` | **`7/7`** | **`90/100`** (`C:23 S:23 B:21 T:22`) | `1,089.9s` | `5,509,380` | `1,657` |
+| **2** | `R4_P1_dream_kimi_rev` | **Yes** | `kimi-cli(k3.1-hs)` -> `dsh(ds-v4.1)` -> `pi(k3.1-pro)` -> `dsh(ds-v4.1)` | **`7/7`** | **`88/100`** (`C:23 S:22 B:21 T:22`) | `973.9s` | `6,364,824` | `1,698` |
+| **3** | `R4_P6_lean_pi_dual_rev` | **Yes** | `kimi-cli(k3.1-hs)` -> `pi(ds-v4.1)` -> `[pi(k3.1) \|\| pi(ml4)]` -> `pi(ds-v4.1)` | **`7/7`** | **`85/100`** (`C:23 S:19 B:21 T:22`) | `955.9s` | **`2,493,323`** | `1,284` |
+| **4** | `R4_P2_dream_ml4_rev` | **Yes** | `kimi-cli(k3.1-hs)` -> `dsh(ds-v4.1)` -> `pi(ml4)` -> `dsh(ds-v4.1)` | **`7/7`** | **`84/100`** (`C:22 S:18 B:22 T:22`) | `874.0s` | `5,495,738` | **`1,111`** |
+| **5** | `R4_P8_parallel_hetero_kimi_ds` | **Yes** | `kimi-cli(k3.1-hs)` -> `[kimi(cov) \|\| pi(cli) -> dsh(srv)]` -> `[pi(k3.1) \|\| pi(ml4)]` -> `dsh` | **`7/7`** | **`83/100`** (`C:21 S:20 B:21 T:21`) | `930.8s` | `3,768,411` | `1,403` |
+| **6** | `R4_P3_dream_dual_rev` | **Yes** | `kimi-cli(k3.1-hs)` -> `dsh(ds-v4.1)` -> `[pi(k3.1) \|\| pi(ml4)]` -> `dsh(ds-v4.1)` | **`7/7`** | **`82/100`** (`C:21 S:20 B:20 T:21`) | `933.2s` | `3,876,056` | `1,300` |
+| **7** | `R4_P5_parallel_pi_lean` | **Yes** | `kimi-cli(k3.1-hs)` -> `[2x pi(ds-v4.1) \|\| -> pi]` -> `[pi(k3.1) \|\| pi(ml4)]` -> `pi` | `6/7` *(G2)* | `77/100` (`C:17 S:22 B:17 T:21`) | **`839.3s`** | `3,482,286` | `1,670` |
+| **8** | `R4_P7_minimax_m31_worker` | **Yes** | `kimi-cli(k3.1-hs)` -> `pi(minimax-m3.1-flash)` -> `pi(k3.1)` -> `pi(minimax-m3.1-flash)` | `6/7` *(G1)* | `69/100` (`C:19 S:17 B:19 T:14`) | `1,159.0s` | `5,879,114` | `1,100` |
+
+**Round 4 Key Takeaways (Hermetic):**
+- **Reliability Jump (`75%` `7/7` Pass Rate):** Porting the Verbatim Spec Rule + Hard `onYield` Test Gate + inline `--no-tools` `pi` Reviewers drove `6/8` pipelines to `7/7` deterministic gates (up from `6/10` in R3, `2/6` in R1, `0/10` in R2).
+- **Parallel File-Scoped `dsh` + Dual Review Won (`90/100`):** `R4_P4_parallel_dsh_gold_parity` paired exact fixtures with full security hardening (`redirect: "error"`, `:7081` & `/v1/admin` guards in config + client) while cutting tokens `-39%` vs Round 3's `R3_H8` (`5.51M` vs `9.10M`).
+- **Best Token Efficiency (`2.49M` tok, `7/7`):** `R4_P6_lean_pi_dual_rev` (`85/100`) used **`-73%` fewer tokens** than Round 3's `#1` (`R3_H8`).
+- **Reviewer & Model Ranking:** `kimi-k3.1-pro` single reviewer (`R4_P1`, `88/100`) beat `mistral-large-4-0` single reviewer (`R4_P2`, `84/100`) by `+4` pts; `MiniMax-M3.1-Flash` (`69/100`, `6/7`) passed live HTTP Auth/IDOR (`G5`) and Go compiler (`G2`) but trails `DeepSeek-V4.1` (`82–90/100`).
+- **Why `95/100` Gold Held:** Fable cited two gaps — remaining config-time URL/`:7081` & whitelisted-view inconsistencies, plus `24 KB` diff truncation hiding `ArkadeServer.js` & tests on larger diffs (Round 5 will use per-file/pairwise blind judging).
 
 ---
 
@@ -87,7 +112,7 @@ Full model audit in [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_
 
 ---
 
-## Cross-Round Key Findings (26 Controlled Pipelines Across 3 Rounds)
+## Cross-Round Key Findings (34 Controlled Pipelines Across 4 Rounds)
 
 1. **Harness × Model Matrix Proof (Round 3)**:
    - **Kimi K3.1 Pro Across Harnesses (`kimi-code` > `pi` > `dsh` > `opencode`)**: Once moved off Round 1's `24 tok/s` router bottleneck onto `k3.1-pro-highspeed` / `nous` (`133 tok/s`), `Kimi-K3.1-Pro` jumped from `0/100` to **`7/7` gates across three harnesses** — **Native `kimi-code 2.5.2` won on quality & craft (`87/100`, `884` LOC, `483s`)**, **`pi 1.5.2` won on token economy (`86/100`, `4.28M` tok — `-37%` fewer tokens than `kimi-code`, `486s`)**, **`dsh 0.2.1-rc.5` scored `84/100` (`7/7` gates)**, and **`opencode 1.19.3` scored `76/100` (`6/7` gates)**.
@@ -112,7 +137,7 @@ Full model audit in [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_
 - [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_11_OPEN_FRONTIER_CATALOG.md): Live Nov-19-2026 HF audit across 10 labs — added `XiaomiMiMo/MiMo-V2.6-Pro-RL` (`89.9%` TB 2.1, `71.9%` DeepSWE), `stepfun-ai/Step-5-Preview` (`80.5%` ProgramBench), `MiniMaxAI/MiniMax-M3.1-Flash` (`73.7%` DeepSWE), `Qwen/Qwen3.8-Flash-Next` (`62.5%` SWE-Pro, 6B active), `tencent/Hy4-flash` (Nov 17), `inclusionAI/Ring-2.6-1T`, and Hugging Face's **`harness-hub/Qwen3.8-27B-pi-adapted`** RL LoRA (`64.7%` SWE-Pro w/ thinking OFF, `4.5×` fewer tokens).
 - [`research/LOCAL_M4_DEEPSEEK_QWEN_OPTIMIZATION.md`](research/LOCAL_M4_DEEPSEEK_QWEN_OPTIMIZATION.md): Empirical Apple M4 (16 GB) optimization of `DeepSeek-V4-Pro-Qwen3.5-9B` (`14.6 -> 24.6 tok/s`, peak `29.4 tok/s`, `+68.5%` via embedded `draft-mtp` + DRY + 6.0 GB swap-safe checkpoints).
 - [`research/HARNESS_SYNTHESIS_PI_DURABLE_VS_CLI.md`](research/HARNESS_SYNTHESIS_PI_DURABLE_VS_CLI.md): Cross-benchmark reconciliation with `eminogrande/pi-durable-swarm` (`ep2`/`ep3`: `pi-durable` `95.33/100`, `pi --no-skills` `41.9K` tok `15.5×` leaner than OpenCode) + porting Verbatim Spec Rule & Hard `onYield` Test Gate into Round 4.
-- **Round 4 Ready (`scripts/run_round4_beat_gold.py`, `scripts/eval_blind_round4.py`)**: Fixes `R3_H8`'s dead Reviewer (`vibe rc=3`) + 38KB diff truncation, adds parallel file-scoped workers (Closed-Gold parity), dual-brain parallel review (`kimi-k3.1-pro || mistral-large-4-0`), and `MiniMax-M3.1-Flash`.
+- **Round 4 Hermetic Complete (`rounds/round4/`, `scripts/run_round4_beat_gold.py`, `scripts/eval_blind_round4.py`)**: 4-layer `sandbox-exec` + `git archive`/`clone` hermetic isolation, Verbatim Spec + Hard `onYield` Test Gate, parallel file-scoped workers (`R4_P4` **`90/100`**, `7/7`), lean dual-review (`R4_P6` **`85/100`**, `2.49M` tok), and `MiniMax-M3.1-Flash` (`69/100`, `6/7`). See [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 

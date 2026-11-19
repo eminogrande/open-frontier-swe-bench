@@ -1,6 +1,6 @@
 import os, sys, json, random, shutil, tempfile, subprocess
 
-WORK_R4 = "/tmp/subtasks/st7_round4"
+WORK_R4 = os.environ.get("WORK_R4", "/private/tmp/bench_clean/r4_hermetic")
 WORK_ST3 = "/tmp/subtasks/st3_gold"
 WORK_ST4 = "/tmp/subtasks/st4_bakeoff"
 MODELS_JSON = f"{WORK_ST4}/models.json"
@@ -61,7 +61,7 @@ Grade each candidate strictly against the Task Specification, the 7 Deterministi
 
 ### Gold Reference Anchor (`95/100`, `7/7` gates)
 ```diff
-{gold_patch[:24000]}
+{gold_patch[:26000]}
 ```
 
 ### Anonymized Candidates
@@ -80,7 +80,12 @@ Return STRICT JSON ONLY:
 
     ag = tempfile.mkdtemp(prefix="r4-fable-")
     try:
-        shutil.copy(MODELS_JSON, f"{ag}/models.json")
+        mdoc = json.load(open(MODELS_JSON))
+        for p in mdoc.get("providers", {}).values():
+            for m in p.get("models", []):
+                if "claude-fable" in m.get("id", ""):
+                    m["maxTokens"] = 8192
+        json.dump(mdoc, open(f"{ag}/models.json", "w"))
         open(f"{ag}/settings.json", "w").write("{}")
         open(f"{ag}/trust.json", "w").write("{}")
         open(f"{ag}/APPEND_SYSTEM.md", "w").write(V3_SKILL)
@@ -89,21 +94,37 @@ Return STRICT JSON ONLY:
         cmd = [
             "/Users/eminmahrt/.local/bin/pi", "-p", "--mode", "json", "--no-session", "--no-context-files",
             "--no-extensions", "--no-mcp", "--no-skills", "--no-tools",
-            "--provider", "nous", "--model", "anthropic/claude-fable-5.2", "--thinking", "max",
+            "--provider", "nous", "--model", "anthropic/claude-fable-5.2", "--thinking", "medium",
             "--", blind_prompt
         ]
-        print("Running blind Fable 5.2 judge on Round 4...", flush=True)
+        print(f"Running blind Fable 5.2 judge on Round 4 (prompt={len(blind_prompt)} chars)...", flush=True)
         proc = subprocess.run(cmd, cwd=WORK_R4, env=env, capture_output=True, text=True, timeout=420)
         final_txt = ""
+        err_msgs = []
         for line in proc.stdout.splitlines():
             if not line.strip().startswith("{"): continue
             try: ev = json.loads(line)
             except Exception: continue
             if ev.get("type") == "turn_end":
-                txts = [c.get("text", "") for c in ev.get("message", {}).get("content", []) if c.get("type") == "text"]
+                msg = ev.get("message", {})
+                if msg.get("errorMessage"):
+                    err_msgs.append(msg["errorMessage"])
+                txts = [c.get("text", "") for c in msg.get("content", []) if c.get("type") == "text"]
                 if txts: final_txt = "\n".join(txts)
+        if not final_txt.strip():
+            raise RuntimeError(f"Fable judge returned empty output (rc={proc.returncode}, errs={err_msgs}, stderr={proc.stderr[-300:]})")
         open(f"{WORK_R4}/fable_blind_judgment_raw.txt", "w").write(final_txt)
-        out = {"anon_map": anon_map, "gates": gate_results, "fable_raw": final_txt}
+        parsed = None
+        try:
+            s = final_txt.strip()
+            if "```json" in s:
+                s = s.split("```json", 1)[1].split("```", 1)[0].strip()
+            elif "```" in s:
+                s = s.split("```", 1)[1].split("```", 1)[0].strip()
+            parsed = json.loads(s)
+        except Exception:
+            parsed = None
+        out = {"anon_map": anon_map, "gates": gate_results, "fable_parsed": parsed, "fable_raw": final_txt}
         json.dump(out, open(f"{WORK_R4}/final_blind_evaluation.json", "w"), indent=2)
         print("ROUND 4 BLIND EVAL DONE")
     finally:

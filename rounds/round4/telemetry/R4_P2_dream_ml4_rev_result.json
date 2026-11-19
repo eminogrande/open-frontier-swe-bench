@@ -1,0 +1,62 @@
+{
+  "id": "R4_P2_dream_ml4_rev",
+  "label": "R3 #1 Fixed ML4 Reviewer: kimi-cli(k3.1-hs) -> dsh(ds-v4.1) -> pi(ml4) -> dsh(ds-v4.1)",
+  "open_weights": true,
+  "hermetic_sandbox": true,
+  "mode": "pipeline",
+  "wall_s": 873.97,
+  "total_tokens": 5495738,
+  "output_tokens": 52452,
+  "reasoning_tokens": 0,
+  "total_turns": 75,
+  "total_tool_calls": 137,
+  "added_loc": 1111,
+  "own_tests_passed": true,
+  "stages": [
+    {
+      "harness": "kimi-code-2.5.2",
+      "model": "kimi-code/k3.1-pro-highspeed",
+      "rc": 0,
+      "elapsed_s": 136.57,
+      "turns": 8,
+      "tool_calls": 51,
+      "total_tokens": 617979,
+      "input_tokens": 609349,
+      "output_tokens": 8630,
+      "reasoning_tokens": 0,
+      "text": "1. **Fixtures:** Copy upstream `templates/artifacts/delegated_vtxo.json` and `templates/renew.json` into `scripts/fixtures/nuri_delegated_vtxo.json` / `scripts/fixtures/nuri_renew.json`. Rename `NuriDelegatedVtxo`; add `clientRecoveryKey`, `clientRecoveryDelay`, exact `clientRecovery` leaf, `client_recovery_key`, `clientRecoveryDelay`. Preserve upstream covenant ASM, four leaves, witnesses, `renewed`, `fees`, `delegation` verbatim. Compute parsed artifact\u2019s RFC-8785 SHA-256; paste into `inputs[0].contract.definition.artifact`. No upstream artifact ID reuse.\n\n2. **Client/config:** Add `src/ArkadeExecutorClient.js`; export `encodeScriptNumHex`, `encodeCsvSequenceHex`, `computeJcsSha256Hex`, `createArkadeExecutorClient`. Use BigInt sign-magnitude encoding; BIP-68 blocks `0..65535`, seconds `512*n`, sequence `(1<<22)|n`; reject overflow/fractions. Reuse `sha256`; JCS recursively UTF-16-sort keys, serialize primitives correctly. Model timeout/fetch handling on `src/ArkadeNotifications.js:49`; no edit there. `src/ArkadeConfig.js`: parse/return `ARKADE_EXECUTOR_URL_V4`, `ARKADE_EXECUTOR_TEMPLATE_ID_V4`, `ARKADE_EXECUTOR_TIMEOUT_MS_V4` (`10000`); enabled only when URL+template exist. Leave `DELEGATE_WORKER_ENABLED_V4` false and `/v1/delegate` absent. Wire `templateId`/`expiresAt` JSON; normalize responses to `template_id`. Only `/v1/info`, `/v1/delegation`; allowlist six variables, lowercase-even hex, recursive secret/token/seed rejection, sanitized errors. Registration timeout/network/5xx => `EXECUTOR_OUTCOME_UNKNOWN`, `outcomeUnknown=true`; deterministic `400`; cancelled `ErrBlocked` => `409`. Active identical registration returns existing delegation.\n\n3. **Routes/tests/docs:** In `src/ArkadeServer.js`, instantiate executor near notifications; add handlers/dispatch for `POST /arkade/executor/delegation/register` and `POST /arkade/executor/delegation/status`. Parse JSON, `verifyRequestAuth(body, cfg)` (`401`), then `getClientSignerFromToken(token)` \u2192 `getDerivedServerPublicKey(cfg, clientPk33)` \u2192 `deriveAggregatedPk33(clientPk33, derived.pub)` (actual property is `pub`, not TASK\u2019s `derived.pub33`). Reject supplied mismatched `owner`/`client_recovery_key` with `403`; overwrite both bound variables. Validate returned template/wallet binding on registration and status; cross-wallet status => `403`. Default status uses idempotent bound registration to discover caller delegation. Unconfigured `503`; timeout `504`, network/5xx `502`, both `outcome_unknown:true`; never log tokens/keys/upstream bodies. Document boundaries in `ENDPOINTS.md`: public `7080` only; never `/v1/admin/*`, `7081`, `/v1/artifact`, `/v1/template`. `src/ArkadeExecutorClient.test.js`: serial `node:test` unit vectors/fixture integrity/idempotency/timeout/cancel/redaction plus live `startArkadeServer` + stub `executord`, two passkeys, proving `401`, spoof/IDOR `403`, roundtrip. Run `node --test src/ArkadeExecutorClient.test.js`.",
+      "stderr": "",
+      "stage": "planner"
+    },
+    {
+      "harness": "dsh-0.2.1-rc.5",
+      "model": "nous/deepseek/deepseek-v4.1-flash-1017",
+      "rc": 0,
+      "elapsed_s": 432.45,
+      "turns": 67,
+      "tool_calls": 86,
+      "total_tokens": 4877759,
+      "input_tokens": 4833937,
+      "output_tokens": 43822,
+      "reasoning_tokens": 0,
+      "text": "Implemented.\n\n- Added fixtures: `scripts/fixtures/nuri_delegated_vtxo.json`, `nuri_renew.json` with exact JCS artifact hash binding.\n- Added `src/ArkadeExecutorClient.js` with CScriptNum/CSV encoding, JCS SHA-256, timeout/uncertainty classification, secret rejection, and idempotent delegation calls.\n- Wired config, authenticated wallet-bound server routes, IDOR/spoof rejection, status roundtrip, and docs.\n- Added `src/ArkadeExecutorClient.test.js`.\n\n`node --test src/ArkadeExecutorClient.test.js` \u2192 9 passed, 0 failed.",
+      "stderr": "",
+      "stage": "worker"
+    },
+    {
+      "harness": "pi-1.5.2",
+      "model": "nous/mistralai/mistral-large-4-0",
+      "rc": -1,
+      "elapsed_s": 301.51,
+      "turns": 0,
+      "tool_calls": 0,
+      "total_tokens": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "text": "",
+      "stderr": "\nTIMEOUT after 300s",
+      "stage": "reviewer"
+    }
+  ]
+}
