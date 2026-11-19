@@ -1,0 +1,510 @@
+import os, sys, json, time, glob, signal, shutil, tempfile, subprocess, concurrent.futures
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SCRIPT_DIR)
+
+WORK_R4 = "/tmp/subtasks/st7_round4"
+WORK_ST3 = "/tmp/subtasks/st3_gold"
+WORK_ST4 = "/tmp/subtasks/st4_bakeoff"
+NURI_REPO = "/Users/eminmahrt/Developer/nuri-server-musig2-v4-arkade"
+ORIGIN_SHA = "136a54faa0c1af817cf9f829412582291a7ec83f"
+
+os.makedirs(WORK_R4, exist_ok=True)
+os.makedirs("/tmp/subtasks/logs", exist_ok=True)
+LOG = open("/tmp/subtasks/logs/st7_round4.log", "w", buffering=1)
+
+V3_SKILL = open("/Users/eminmahrt/Developer/agent-prompt-brevity-bench/prompts/V3_caveman_adhd_winner.md").read()
+TASK_PROMPT = open(f"{WORK_ST3}/TASK_PROMPT.md").read()
+
+st4_provs = json.load(open(f"{WORK_ST4}/models.json"))["providers"]
+NOUS_KEY = st4_provs["nous"]["apiKey"]
+PR_KEY = st4_provs["paymentrequired"]["apiKey"]
+
+def log(msg):
+    LOG.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+    print(msg, flush=True)
+
+def run_cmd_pg(cmd, cwd, env, timeout):
+    t0 = time.time()
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, start_new_session=True
+    )
+    try:
+        out_s, err_s = proc.communicate(timeout=timeout)
+        rc = proc.returncode
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+            time.sleep(1.5)
+            os.killpg(proc.pid, signal.SIGKILL)
+        except Exception:
+            pass
+        out_s, err_s = proc.communicate()
+        rc = -1
+        err_s = (err_s or "") + f"\nTIMEOUT after {timeout}s"
+    return rc, out_s or "", (err_s or "")[-500:], round(time.time() - t0, 2)
+
+NOUS_MODELS = [
+    "moonshotai/kimi-k3.1-pro",
+    "mistralai/mistral-large-4-0",
+    "qwen/qwen3.8-2.4t-a95b",
+    "deepseek/deepseek-v4.1-flash-1017",
+    "minimax/minimax-m3.1-flash",
+    "tencent/hy4",
+    "anthropic/claude-fable-5.2",
+]
+
+def run_pi(provider, model, prompt, cwd, tools=True, timeout=540):
+    ag = tempfile.mkdtemp(prefix="r4-pi-")
+    try:
+        models_doc = {
+            "providers": {
+                "nous": {
+                    "baseUrl": "https://inference-api.nousresearch.com/v1",
+                    "apiKey": NOUS_KEY,
+                    "api": "openai-completions",
+                    "models": [
+                        {"id": m, "name": m, "reasoning": True, "input": ["text"], "contextWindow": 262144, "maxTokens": 32768}
+                        for m in NOUS_MODELS
+                    ]
+                },
+                "pr": {
+                    "baseUrl": "https://router.paymentrequired.com/v1/internal",
+                    "apiKey": PR_KEY,
+                    "api": "openai-completions",
+                    "models": [
+                        {"id": "deepseek-v4.1-flash-abliterated", "name": "ds-v4.1-flash", "reasoning": True, "input": ["text"], "contextWindow": 262144, "maxTokens": 32768},
+                    ]
+                }
+            }
+        }
+        json.dump(models_doc, open(f"{ag}/models.json", "w"))
+        open(f"{ag}/settings.json", "w").write("{}")
+        open(f"{ag}/trust.json", "w").write("{}")
+        open(f"{ag}/APPEND_SYSTEM.md", "w").write(V3_SKILL)
+        env = os.environ.copy()
+        env["PI_CODING_AGENT_DIR"] = ag
+        cmd = [
+            "/Users/eminmahrt/.local/bin/pi", "-p", "--mode", "json", "--no-session", "--no-context-files",
+            "--no-extensions", "--no-mcp", "--no-skills",
+            *([] if tools else ["--no-tools"]),
+            "--provider", provider, "--model", model, "--thinking", "max",
+            "--", prompt
+        ]
+        rc, out_s, err_s, elapsed = run_cmd_pg(cmd, cwd, env, timeout)
+        tot_tok = in_tok = out_tok = rsn_tok = turns = tool_calls = 0
+        final_txt = ""
+        for line in out_s.splitlines():
+            if not line.strip().startswith("{"): continue
+            try: ev = json.loads(line)
+            except Exception: continue
+            if ev.get("type") == "turn_end":
+                turns += 1
+                msg = ev.get("message", {})
+                u = msg.get("usage", {})
+                in_tok += u.get("input", 0) + u.get("cacheRead", 0)
+                out_tok += u.get("output", 0)
+                rsn_tok += u.get("reasoning", 0)
+                tot_tok += u.get("totalTokens", 0)
+                tool_calls += len(ev.get("toolResults", []))
+                txts = [c.get("text", "") for c in msg.get("content", []) if c.get("type") == "text"]
+                if txts: final_txt = "\n".join(txts)
+        return {
+            "harness": "pi-1.5.2", "model": f"{provider}/{model}", "rc": rc, "elapsed_s": elapsed,
+            "turns": turns, "tool_calls": tool_calls,
+            "total_tokens": tot_tok, "input_tokens": in_tok, "output_tokens": out_tok, "reasoning_tokens": rsn_tok,
+            "text": final_txt, "stderr": err_s
+        }
+    finally:
+        shutil.rmtree(ag, ignore_errors=True)
+
+def run_dsh(provider, model, prompt, cwd, tools=True, timeout=540):
+    patch_f = tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False)
+    v3_indented = V3_SKILL.replace("\n", "\n      ")
+    disable_tools_block = "" if tools else "\n".join(
+        f"- id: {t}\n  disabled: true"
+        for t in ["tool-bash", "tool-pwsh", "tool-jobs", "tool-fs", "tool-fs-search", "tool-subagent", "tool-subagent-fork", "tool-workflow", "tool-web"]
+    )
+    nous_yaml = "\n".join(f"          - id: {m}\n            contextWindow: 1048576" for m in NOUS_MODELS)
+    patch_f.write(f"""
+- id: agent-default-model
+  config:
+    provider: {provider}
+    model: {model}
+- id: system-prompt
+  config:
+    personaPrefix: |
+      You are a coding agent powered by the {{{{model}}}} model.
+      {v3_indented}
+- id: llm-pi-ai
+  config:
+    providers:
+      402router:
+        displayName: paymentrequired.com
+        apiKeyEnv: ROUTER_INTERNAL_KEY
+        api: openai-completions
+        baseURL: https://router.paymentrequired.com/v1/internal
+        compat:
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+        models:
+          - id: deepseek-v4.1-flash-abliterated
+            contextWindow: 1048576
+      nous:
+        displayName: Nous
+        apiKeyEnv: NOUS_API_KEY
+        api: openai-completions
+        baseURL: https://inference-api.nousresearch.com/v1
+        compat:
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+        models:
+{nous_yaml}
+{disable_tools_block}
+""")
+    patch_f.close()
+    try:
+        env = os.environ.copy()
+        env["ROUTER_INTERNAL_KEY"] = PR_KEY
+        env["NOUS_API_KEY"] = NOUS_KEY
+        env["DSH_PERMISSION_MODE"] = "danger-full-access"
+        cmd = ["/Users/eminmahrt/.volta/bin/dsh", "--profile", "headless", "--patch", patch_f.name, "--json", prompt]
+        rc, out_s, err_s, elapsed = run_cmd_pg(cmd, cwd, env, timeout)
+        tot_tok = in_tok = out_tok = rsn_tok = steps = tool_calls = 0
+        final_txt = last_text = ""
+        for line in out_s.splitlines():
+            if not line.strip().startswith("{"): continue
+            try: ev = json.loads(line)
+            except Exception: continue
+            tp = ev.get("type")
+            if tp == "tool_call":
+                tool_calls += 1
+            elif tp == "text":
+                last_text = ev.get("text", "")
+            elif tp == "final" and ev.get("text"):
+                final_txt = ev.get("text", "")
+            elif tp == "status" and ev.get("phase") == "step_end":
+                steps += 1
+                u = ev.get("usage") or {}
+                it, cr, ot = u.get("inputTokens", 0), u.get("cacheReadTokens", 0), u.get("outputTokens", 0)
+                in_tok += (it + cr)
+                out_tok += ot
+                tot_tok += (u.get("totalTokens") or (it + cr + ot))
+        return {
+            "harness": "dsh-0.2.1-rc.5", "model": f"{provider}/{model}", "rc": rc, "elapsed_s": elapsed,
+            "turns": steps, "tool_calls": tool_calls,
+            "total_tokens": tot_tok, "input_tokens": in_tok, "output_tokens": out_tok, "reasoning_tokens": rsn_tok,
+            "text": final_txt or last_text, "stderr": err_s
+        }
+    finally:
+        if os.path.exists(patch_f.name):
+            os.unlink(patch_f.name)
+
+def run_kimi_cli(model_alias, prompt, cwd, timeout=540):
+    empty_skills = tempfile.mkdtemp(prefix="r4-kimi-skills-")
+    try:
+        env = os.environ.copy()
+        cmd = [
+            "/Users/eminmahrt/.kimi-code/bin/kimi",
+            "--skills-dir", empty_skills,
+            "--model", model_alias,
+            "--output-format", "stream-json",
+            "-p", f"{V3_SKILL}\n\n{prompt}"
+        ]
+        rc, out_s, err_s, elapsed = run_cmd_pg(cmd, cwd, env, timeout)
+        tot_tok = in_tok = out_tok = rsn_tok = steps = tool_calls = 0
+        final_txt = session_id = ""
+        for line in out_s.splitlines():
+            if not line.strip().startswith("{"): continue
+            try: ev = json.loads(line)
+            except Exception: continue
+            if ev.get("role") == "assistant":
+                tool_calls += len(ev.get("tool_calls") or [])
+                if ev.get("content"):
+                    final_txt = ev.get("content", "")
+            elif ev.get("type") == "session.resume_hint":
+                session_id = ev.get("session_id", "")
+        if session_id:
+            for wf in glob.glob(os.path.expanduser(f"~/.kimi-code/sessions/**/{session_id}/agents/*/wire.jsonl"), recursive=True):
+                for wl in open(wf, errors="ignore"):
+                    if '"usage.record"' in wl:
+                        try:
+                            wev = json.loads(wl)
+                            if wev.get("type") == "usage.record":
+                                steps += 1
+                                u = wev.get("usage") or {}
+                                io = u.get("inputOther", 0) + u.get("inputCacheRead", 0) + u.get("inputCacheCreation", 0)
+                                ot = u.get("output", 0)
+                                in_tok += io
+                                out_tok += ot
+                                tot_tok += (io + ot)
+                        except Exception:
+                            pass
+        return {
+            "harness": "kimi-code-2.5.2", "model": model_alias, "rc": rc, "elapsed_s": elapsed,
+            "turns": steps, "tool_calls": tool_calls,
+            "total_tokens": tot_tok, "input_tokens": in_tok, "output_tokens": out_tok, "reasoning_tokens": rsn_tok,
+            "text": final_txt, "stderr": err_s
+        }
+    finally:
+        shutil.rmtree(empty_skills, ignore_errors=True)
+
+def dispatch(spec, prompt, cwd, tools=True, timeout=540):
+    h = spec["harness"]
+    if h == "pi":
+        return run_pi(spec["provider"], spec["model"], prompt, cwd, tools=tools, timeout=timeout)
+    if h == "dsh":
+        return run_dsh(spec["provider"], spec["model"], prompt, cwd, tools=tools, timeout=timeout)
+    if h == "kimi":
+        return run_kimi_cli(spec["model"], prompt, cwd, timeout=timeout)
+    raise ValueError(f"Unknown harness: {h}")
+
+# 8 Round 4 Open-Frontier Beat-Gold Pipelines (100% open weights!)
+KIMI_PLAN = {"harness": "kimi", "model": "kimi-code/k3.1-pro-highspeed"}
+DSH_DS41 = {"harness": "dsh", "provider": "402router", "model": "deepseek-v4.1-flash-abliterated"}
+PI_DS41  = {"harness": "pi",  "provider": "pr",        "model": "deepseek-v4.1-flash-abliterated"}
+REV_KIMI = {"harness": "pi",  "provider": "nous",      "model": "moonshotai/kimi-k3.1-pro"}
+REV_ML4  = {"harness": "pi",  "provider": "nous",      "model": "mistralai/mistral-large-4-0"}
+PI_MM31  = {"harness": "pi",  "provider": "nous",      "model": "minimax/minimax-m3.1-flash"}
+PI_HY4   = {"harness": "pi",  "provider": "nous",      "model": "tencent/hy4"}
+KIMI_W   = {"harness": "kimi","model": "kimi-code/k3.1-pro-highspeed"}
+
+PIPELINES = [
+    {
+        "id": "R4_P1_dream_kimi_rev",
+        "label": "R3 #1 Fixed Reviewer: kimi-cli(k3.1-hs) -> dsh(ds-v4.1) -> pi(k3.1-pro) -> dsh(ds-v4.1)",
+        "mode": "pipeline",
+        "planner": KIMI_PLAN, "worker": DSH_DS41, "reviewers": [REV_KIMI], "orchestrator": DSH_DS41
+    },
+    {
+        "id": "R4_P2_dream_ml4_rev",
+        "label": "R3 #1 Fixed ML4 Reviewer: kimi-cli(k3.1-hs) -> dsh(ds-v4.1) -> pi(ml4) -> dsh(ds-v4.1)",
+        "mode": "pipeline",
+        "planner": KIMI_PLAN, "worker": DSH_DS41, "reviewers": [REV_ML4], "orchestrator": DSH_DS41
+    },
+    {
+        "id": "R4_P3_dream_dual_rev",
+        "label": "Dual-Brain Review Panel: kimi-cli(k3.1-hs) -> dsh(ds-v4.1) -> [pi(k3.1) || pi(ml4)] -> dsh(ds-v4.1)",
+        "mode": "pipeline",
+        "planner": KIMI_PLAN, "worker": DSH_DS41, "reviewers": [REV_KIMI, REV_ML4], "orchestrator": DSH_DS41
+    },
+    {
+        "id": "R4_P4_parallel_dsh_gold_parity",
+        "label": "Gold-Parity Parallel DSH: kimi-cli(k3.1-hs) -> [2x dsh || -> dsh] -> [pi(k3.1) || pi(ml4)] -> dsh",
+        "mode": "parallel_gold",
+        "planner": KIMI_PLAN, "worker": DSH_DS41, "reviewers": [REV_KIMI, REV_ML4], "orchestrator": DSH_DS41
+    },
+    {
+        "id": "R4_P5_parallel_pi_lean",
+        "label": "Gold-Parity Parallel Lean Pi: kimi-cli(k3.1-hs) -> [2x pi || -> pi] -> [pi(k3.1) || pi(ml4)] -> pi",
+        "mode": "parallel_gold",
+        "planner": KIMI_PLAN, "worker": PI_DS41, "reviewers": [REV_KIMI, REV_ML4], "orchestrator": PI_DS41
+    },
+    {
+        "id": "R4_P6_lean_pi_dual_rev",
+        "label": "Lean Pi 4-Stage Dual-Rev: kimi-cli(k3.1-hs) -> pi(ds-v4.1) -> [pi(k3.1) || pi(ml4)] -> pi(ds-v4.1)",
+        "mode": "pipeline",
+        "planner": KIMI_PLAN, "worker": PI_DS41, "reviewers": [REV_KIMI, REV_ML4], "orchestrator": PI_DS41
+    },
+    {
+        "id": "R4_P7_minimax_m31_worker",
+        "label": "New Contender MiniMax-M3.1-Flash: kimi-cli(k3.1-hs) -> pi(minimax-m3.1-flash) -> pi(k3.1) -> pi(minimax-m3.1-flash)",
+        "mode": "pipeline",
+        "planner": KIMI_PLAN, "worker": PI_MM31, "reviewers": [REV_KIMI], "orchestrator": PI_MM31
+    },
+    {
+        "id": "R4_P8_parallel_hetero_kimi_ds",
+        "label": "Hetero Parallel Specialists: kimi-cli(k3.1-hs) -> [kimi(cov) || pi(client) -> dsh(server)] -> [pi(k3.1) || pi(ml4)] -> dsh",
+        "mode": "parallel_hetero",
+        "planner": KIMI_PLAN, "worker_cov": KIMI_W, "worker_cli": PI_DS41, "worker_srv": DSH_DS41,
+        "reviewers": [REV_KIMI, REV_ML4], "orchestrator": DSH_DS41
+    },
+]
+
+def setup_wt(cid):
+    wt = f"{WORK_R4}/wt_{cid}"
+    if os.path.exists(wt):
+        subprocess.run(["git", "worktree", "remove", "--force", wt], cwd=NURI_REPO)
+    subprocess.run(["git", "worktree", "add", "--detach", wt, ORIGIN_SHA], cwd=NURI_REPO, check=True)
+    if not os.path.exists(f"{wt}/node_modules"):
+        os.symlink("/tmp/subtasks/st2_audit/nuri-server-wt/node_modules", f"{wt}/node_modules")
+    return wt
+
+def clean_wt_diff(wt):
+    subprocess.run(["git", "add", "-N", "."], cwd=wt)
+    subprocess.run(["git", "reset", "-q", "--", "node_modules"], cwd=wt)
+    return subprocess.run(["git", "diff", "--", ":!node_modules"], cwd=wt, capture_output=True, text=True).stdout
+
+def run_review_panel(reviewers, diff_txt, test_mid, cwd):
+    rev_prompt = f"""ROLE: Adversarial Principal Security & Protocol Reviewer. You have NO file tools; the COMPLETE candidate git diff and test output are inline below—analyze EVERY file directly right now!
+Audit strictly for:
+1. Protocol & encoding correctness: exact schema/hash invariants, edge-case integer/numeric width & bounds, negative/zero validation, and spec fidelity.
+2. Security & boundary hardening: auth/ownership binding, cross-user IDOR across all routes, statelessness/restart resilience, admin/redirect/response-size/error-handling boundaries, and zero credential/URL leaks.
+3. Craft, tests & docs: minimal clean diffs reusing existing helpers, avoiding duplicated logic or unnecessary state, zero regressions, realistic live-HTTP tests, and concise docs.
+
+List ONLY genuine defects with exact file/function names and minimal fixes. If zero defects exist, reply `APPROVED_NO_FIXES`.
+
+TASK SPEC:
+{TASK_PROMPT}
+
+TEST OUTPUT (rc={test_mid.returncode}):
+{(test_mid.stdout + test_mid.stderr)[-2500:]}
+
+COMPLETE GIT DIFF:
+```diff
+{diff_txt[:100000]}
+```"""
+    if len(reviewers) == 1:
+        r = dispatch(reviewers[0], rev_prompt, cwd=cwd, tools=False, timeout=300)
+        r["stage"] = "reviewer"
+        return [r]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(reviewers)) as ex:
+        futs = [ex.submit(dispatch, rv, rev_prompt, cwd, False, 300) for rv in reviewers]
+        out = []
+        for idx, f in enumerate(futs):
+            r = f.result()
+            r["stage"] = f"reviewer_{idx+1}"
+            out.append(r)
+        return out
+
+def run_pipeline(cfg):
+    cid = cfg["id"]
+    wt = setup_wt(cid)
+    log(f"[{cid}] Starting ({cfg['label']})...")
+    stages = []
+    t_start = time.time()
+
+    is_parallel = cfg["mode"] in ("parallel_gold", "parallel_hetero")
+    plan_extra = (
+        "\nDivide execution into 3 strictly disjoint file slices with exact exported symbol names/signatures so Wave-1 workers run in parallel without conflicts:\n"
+        "- Slice A: `contracts/arkade/nuri_delegated_vtxo.json`, `contracts/arkade/nuri_renew.json`, `src/ArkadeCovenant.js`\n"
+        "- Slice B: `src/ArkadeConfig.js`, `src/ArkadeExecutorClient.js`\n"
+        "- Slice C: `src/ArkadeServer.js`, `ENDPOINTS.md`, `src/ArkadeExecutorClient.test.js`\n"
+        if is_parallel else ""
+    )
+    plan_prompt = f"""ROLE: Planner / Architect. Do NOT edit files. Inspect exact relevant lines in `src/ArkadeServer.js`, `src/ArkadeConfig.js`, `src/ArkadeNotifications.js`, `ENDPOINTS.md`, and any upstream reference repos on disk. Output a crisp atomic implementation blueprint (<400 words) covering exact file edits, existing helpers to reuse (`verifyRequestAuth`, `getClientSignerFromToken`, `getDerivedServerPublicKey`, `deriveAggregatedPk33`), exact schema/encoding invariants, and security boundaries.{plan_extra}
+
+TASK:
+{TASK_PROMPT}"""
+    s_plan = dispatch(cfg["planner"], plan_prompt, cwd=wt, tools=True, timeout=360)
+    s_plan["stage"] = "planner"
+    stages.append(s_plan)
+    log(f"[{cid}] Planner done: {s_plan['total_tokens']} tok, {s_plan['elapsed_s']}s")
+
+    if not is_parallel:
+        work_prompt = f"""ROLE: Worker. Implement the task completely with minimal clean code and run `node --test src/ArkadeExecutorClient.test.js` until green.
+
+PLANNER BLUEPRINT:
+{s_plan['text']}
+
+EXACT TASK SPECIFICATION:
+{TASK_PROMPT}"""
+        s_work = dispatch(cfg["worker"], work_prompt, cwd=wt, tools=True, timeout=540)
+        s_work["stage"] = "worker"
+        stages.append(s_work)
+        log(f"[{cid}] Worker done: {s_work['total_tokens']} tok, {s_work['elapsed_s']}s")
+    else:
+        w_cov_spec = cfg.get("worker_cov") or cfg["worker"]
+        w_cli_spec = cfg.get("worker_cli") or cfg["worker"]
+        w_srv_spec = cfg.get("worker_srv") or cfg["worker"]
+
+        p_cov = f"""ROLE: Parallel Worker A (Covenant & Encoding ONLY). Edit/create ONLY `contracts/arkade/nuri_delegated_vtxo.json`, `contracts/arkade/nuri_renew.json`, and `src/ArkadeCovenant.js`. Do NOT touch any other file! Verify hashes & encoding invariants with `node -e`.
+
+PLANNER BLUEPRINT:
+{s_plan['text']}
+
+EXACT TASK SPECIFICATION:
+{TASK_PROMPT}"""
+        p_cli = f"""ROLE: Parallel Worker B (Config & Executor Client ONLY). Edit/create ONLY `src/ArkadeConfig.js` and `src/ArkadeExecutorClient.js`. Do NOT touch `contracts/`, `src/ArkadeCovenant.js`, `src/ArkadeServer.js`, or `ENDPOINTS.md`! Enforce all config, HTTP boundary, and uncertain-outcome invariants per spec.
+
+PLANNER BLUEPRINT:
+{s_plan['text']}
+
+EXACT TASK SPECIFICATION:
+{TASK_PROMPT}"""
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            f_cov = ex.submit(dispatch, w_cov_spec, p_cov, wt, True, 420)
+            f_cli = ex.submit(dispatch, w_cli_spec, p_cli, wt, True, 420)
+            s_cov, s_cli = f_cov.result(), f_cli.result()
+        s_cov["stage"] = "worker_wave1_covenant"
+        s_cli["stage"] = "worker_wave1_client"
+        stages.extend([s_cov, s_cli])
+        log(f"[{cid}] Wave-1 parallel done: cov={s_cov['elapsed_s']}s({s_cov['total_tokens']}t) cli={s_cli['elapsed_s']}s({s_cli['total_tokens']}t)")
+
+        p_srv = f"""ROLE: Wave-2 Integration Worker C (Server Routes, Tests & Docs). Wave-1 workers ALREADY wrote `contracts/arkade/*`, `src/ArkadeCovenant.js`, `src/ArkadeConfig.js`, and `src/ArkadeExecutorClient.js`. Inspect their exact exports first, then wire `src/ArkadeServer.js`, update `ENDPOINTS.md`, and write comprehensive unit + live-HTTP auth/IDOR/spoofing tests in `src/ArkadeExecutorClient.test.js`. Fix any integration mismatch if needed and run `node --test src/ArkadeExecutorClient.test.js` AND `node scripts/notifications-bind-proof.mjs` until both pass!
+
+PLANNER BLUEPRINT:
+{s_plan['text']}
+
+EXACT TASK SPECIFICATION:
+{TASK_PROMPT}"""
+        s_srv = dispatch(w_srv_spec, p_srv, cwd=wt, tools=True, timeout=480)
+        s_srv["stage"] = "worker_wave2_integration"
+        stages.append(s_srv)
+        log(f"[{cid}] Wave-2 integration done: {s_srv['elapsed_s']}s({s_srv['total_tokens']}t)")
+
+    cand_diff = clean_wt_diff(wt)
+    test_mid = subprocess.run(["node", "--test", "src/ArkadeExecutorClient.test.js"], cwd=wt, capture_output=True, text=True, timeout=60)
+    rev_stages = run_review_panel(cfg["reviewers"], cand_diff, test_mid, cwd=wt)
+    stages.extend(rev_stages)
+
+    valid_revs = [r for r in rev_stages if r["rc"] == 0 and r["text"].strip()]
+    all_approved = bool(valid_revs) and all("APPROVED_NO_FIXES" in r["text"] for r in valid_revs)
+    for r in rev_stages:
+        log(f"[{cid}] {r['stage']} ({r['model']}) rc={r['rc']} {r['total_tokens']}t {r['elapsed_s']}s | {r['text'][:70].replace(chr(10),' ')}")
+
+    if (not all_approved and valid_revs) or test_mid.returncode != 0:
+        merged_findings = "\n\n---\n\n".join(
+            f"### {r['stage']} ({r['model']})\n{r['text']}" for r in valid_revs
+        ) or f"Tests failed (rc={test_mid.returncode}):\n{(test_mid.stdout + test_mid.stderr)[-1500:]}"
+        orch_prompt = f"""ROLE: Surgical Finisher / Orchestrator. Verify each Reviewer finding below against the actual code; fix every genuine defect cleanly with minimal diff (avoid bloat, unneeded in-process state, or duplicated validation). Run BOTH `node --test src/ArkadeExecutorClient.test.js` AND `node scripts/notifications-bind-proof.mjs` until both exit 0!
+
+REVIEWER FINDINGS:
+{merged_findings}"""
+        s_orch = dispatch(cfg["orchestrator"], orch_prompt, cwd=wt, tools=True, timeout=360)
+        s_orch["stage"] = "orchestrator_fix"
+        stages.append(s_orch)
+        log(f"[{cid}] Finisher done: {s_orch['total_tokens']} tok, {s_orch['elapsed_s']}s")
+
+    wall_s = round(time.time() - t_start, 2)
+    final_diff = clean_wt_diff(wt)
+    open(f"{WORK_R4}/{cid}.patch", "w").write(final_diff)
+
+    test_f = f"{wt}/src/ArkadeExecutorClient.test.js"
+    own_ok = (subprocess.run(["node", "--test", "src/ArkadeExecutorClient.test.js"], cwd=wt, capture_output=True, text=True, timeout=60).returncode == 0) if os.path.exists(test_f) else False
+    added_loc = sum(1 for l in final_diff.splitlines() if l.startswith("+") and not l.startswith("+++") and l[1:].strip())
+
+    res = {
+        "id": cid, "label": cfg["label"], "open_weights": True, "mode": cfg["mode"],
+        "wall_s": wall_s,
+        "total_tokens": sum(s["total_tokens"] for s in stages),
+        "output_tokens": sum(s["output_tokens"] for s in stages),
+        "reasoning_tokens": sum(s["reasoning_tokens"] for s in stages),
+        "total_turns": sum(s["turns"] for s in stages),
+        "total_tool_calls": sum(s["tool_calls"] for s in stages),
+        "added_loc": added_loc,
+        "own_tests_passed": own_ok,
+        "stages": stages
+    }
+    json.dump(res, open(f"{WORK_R4}/{cid}_result.json", "w"), indent=2)
+    log(f"[{cid}] COMPLETE: own_tests={own_ok} tot_tok={res['total_tokens']} wall={wall_s}s added_loc={added_loc}")
+    return res
+
+def run_group(cids):
+    return [run_pipeline(c) for c in PIPELINES if c["id"] in cids]
+
+if __name__ == "__main__":
+    groups = [
+        ["R4_P1_dream_kimi_rev", "R4_P4_parallel_dsh_gold_parity"],
+        ["R4_P2_dream_ml4_rev", "R4_P5_parallel_pi_lean"],
+        ["R4_P3_dream_dual_rev", "R4_P6_lean_pi_dual_rev"],
+        ["R4_P7_minimax_m31_worker", "R4_P8_parallel_hetero_kimi_ds"],
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+        results = []
+        for f in [ex.submit(run_group, g) for g in groups]:
+            results.extend(f.result())
+    json.dump(results, open(f"{WORK_R4}/round4_pipelines_raw.json", "w"), indent=2)
+    log("ALL_8_ROUND4_PIPELINES_COMPLETE")

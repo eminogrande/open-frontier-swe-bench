@@ -26,5 +26,15 @@ Verified live against Hugging Face Hub (`huggingface.co/api/models`), OpenRouter
 | `meta/muse-spark-open` | `meta-models/Muse-Spark-Open-816B-A42B` | 816B / 42B MoE | 1M | 2026-10-15 | **Yes** | Coding specialist (requires strict tool-forcing harness) |
 | `mistralai/devstral-2512` | `mistralai/Devstral-2-123B-Instruct-2512` | 123B Dense | 256K | 2025-12-09 | **Yes** | Fast non-reasoning SWE Worker |
 | `z-ai/glm-5.3` / `glm-5.3-prime` | `zai-org/GLM-5.3` | Frontier MoE | 1M | 2026-09 / 10 | **Yes** | Fast Planner / Reviewer |
-| `minimax/minimax-m3.1-flash` | `MiniMaxAI/MiniMax-M3.1-Flash` | MoE | 1M | 2026-10-19 | **Yes** | Fast cybersecurity/agentic Worker |
-| `tencent/hy4` / `hy4-flash` | `tencent/Hy4` / `tencent/Hy4-flash` | 700B+ / 49B MoE | 1M | 2026-11-04 / 16 | **Yes** | Long-horizon agentic candidate (Round 3+) |
+| `minimax/minimax-m3.1-flash` | `MiniMaxAI/MiniMax-M3.1-Flash` | 428B / 23B MoE | 1M | 2026-10-17 | **Yes** | Long-horizon SWE Worker (`73.7%` DeepSWE v1.1) |
+| `xiaomi/mimo-v2.6-pro-rl` | `XiaomiMiMo/MiMo-V2.6-Pro-RL` | 1.02T / 42B MoE | 1M | 2026-09-21 | **Yes** | Frontier Agentic Planner/Worker (`89.9%` TB 2.1, `71.9%` DeepSWE v1.1) |
+| `stepfun/step-5-preview` | `stepfun-ai/Step-5-Preview` | 600B / 27B MoE | 1M | 2026-09-20 | **Yes** | High-code SWE (`80.5%` ProgramBench, `67.7%` DeepSWE v1.1) |
+| `qwen/qwen3.8-flash-next` | `Qwen/Qwen3.8-Flash-Next` | 125B / 6B MoE | 262K | 2026-08-24 | **Yes** | Ultra-cheap fast Worker (`62.5%` SWE-bench Pro, `91.9` LCB v6) |
+| `tencent/hy4-flash` / `hy4` | `tencent/Hy4-flash` / `tencent/Hy4-preview` | 224B / 12B MoE (770B full) | 1M | 2026-11-17 | **Yes** | Ultra-cheap 1M-ctx Worker (`64.6%` DeepSWE v1.1, `$0.07/M`) |
+| `inclusionai/ring-2.6-1t` | `inclusionAI/Ring-2.6-1T` / `Ling-2.6-1T` | 1T hybrid MoE | 262K | 2026-05 | **Yes** | Agent-native reasoning contender (TAU2/BFCL-V4) |
+| `harness-hub/qwen3.8-27b-pi` | `harness-hub/Qwen3.8-27B-pi-adapted` (+`-opencode`) | 27B Dense + r32 RL LoRA | 262K | 2026-11-16 | **Yes (Apache-2.0)** | **Harness-RL breakthrough**: `64.7%` SWE-bench Pro w/ **thinking OFF** (`4.5x` fewer tok, `-55–62%` tool calls) |
+
+## Harness-Specific RL LoRA Adapters (`harness-hub`, 2026-11-16)
+- Highlighted by Hugging Face CEO Clément Delangue (`x.com/ClementDelangue/status/2122784279604383914`): small rank-32 LoRA adapters trained via async GRPO inside unmodified CLI harnesses (`pi`, `opencode`, `hermes`, `claude-code`).
+- **`harness-hub/Qwen3.8-27B-pi-adapted`** (+ `-GGUF` for `llama-server --lora`, + `-opencode-adapted`) jumps `Qwen3.8-27B` (thinking OFF) from **`39.2%` -> `64.7%`** on SWE-bench Pro (Hard 51) and **`39.5%` -> `55.8%`** on Terminal-Bench 2.1 — matching base `xhigh` thinking while burning **4.5× fewer tokens** and **55–62% fewer tool calls**.
+- Smaller M4-16GB-friendly `harness-hub` adapters: `LFM2.5-24B-A2B-pi-GGUF`, `TwIL-8B-pi-GGUF`, `LFM3-1.7B-pi-GGUF`; local 9B alternatives: `xtools-at/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic` & `XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B`.

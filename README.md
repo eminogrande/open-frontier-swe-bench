@@ -108,6 +108,13 @@ Full model audit in [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_
 
 ---
 
+## Research & Optimization Docs (`research/`)
+- [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_11_OPEN_FRONTIER_CATALOG.md): Live Nov-19-2026 HF audit across 10 labs — added `XiaomiMiMo/MiMo-V2.6-Pro-RL` (`89.9%` TB 2.1, `71.9%` DeepSWE), `stepfun-ai/Step-5-Preview` (`80.5%` ProgramBench), `MiniMaxAI/MiniMax-M3.1-Flash` (`73.7%` DeepSWE), `Qwen/Qwen3.8-Flash-Next` (`62.5%` SWE-Pro, 6B active), `tencent/Hy4-flash` (Nov 17), `inclusionAI/Ring-2.6-1T`, and Hugging Face's **`harness-hub/Qwen3.8-27B-pi-adapted`** RL LoRA (`64.7%` SWE-Pro w/ thinking OFF, `4.5×` fewer tokens).
+- [`research/LOCAL_M4_DEEPSEEK_QWEN_OPTIMIZATION.md`](research/LOCAL_M4_DEEPSEEK_QWEN_OPTIMIZATION.md): Empirical Apple M4 (16 GB) optimization of `DeepSeek-V4-Pro-Qwen3.5-9B` (`14.6 -> 24.6 tok/s`, peak `29.4 tok/s`, `+68.5%` via embedded `draft-mtp` + DRY + 6.0 GB swap-safe checkpoints).
+- **Round 4 Ready (`scripts/run_round4_beat_gold.py`, `scripts/eval_blind_round4.py`)**: Fixes `R3_H8`'s dead Reviewer (`vibe rc=3`) + 38KB diff truncation, adds parallel file-scoped workers (Closed-Gold parity), dual-brain parallel review (`kimi-k3.1-pro || mistral-large-4-0`), and `MiniMax-M3.1-Flash`.
+
+---
+
 ## Reproducing & Running Next Rounds
 
 ```bash
@@ -115,4 +122,6 @@ Full model audit in [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_
 python3 scripts/eval_blind_round1.py
 python3 scripts/eval_blind_round2.py
 python3 scripts/eval_blind_round3.py
+# Round 4 (beat 95/100 Gold target):
+python3 scripts/run_round4_beat_gold.py && python3 scripts/eval_blind_round4.py
 ```
