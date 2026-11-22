@@ -4,6 +4,26 @@ All notable benchmark rounds, harness engineering fixes, model catalog audits, a
 
 ---
 
+## [2026-11-22] — Living Prompt, Speed & Reliability Benchmark
+
+### Added
+- **V4a experimental default:** Published [`prompts/V4a_tldr_caveman.md`](prompts/V4a_tldr_caveman.md) in the root README while retaining V3 as the measured baseline. Global Kimi activation is queued after the controlled trials to avoid contaminating the A/B comparison.
+- [`prompts/V4c_adaptive_effort.md`](prompts/V4c_adaptive_effort.md): Next candidate for reliable minimalism—start terse, then think deeper and iterate only when blocked, uncertain, or failing tests. Kimi `low`/`high`/`max` thinking comparisons are planned as a separate factor.
+- [`research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md`](research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md): Canonical GitHub-native continuation of the prompt-efficiency blog, with explicit separation of published results, fresh replication evidence, pending experiments, and blocked model lanes.
+- [`scripts/run_round5_prompt_bakeoff.py`](scripts/run_round5_prompt_bakeoff.py): 48-run sequential Kimi Code comparison of stock, V3, TLDR-Caveman, and TLDR + thinking-budget prompts across four past tasks, with three repetitions, hidden tests, identity-stripped code review, token/time-per-pass metrics, and raw telemetry.
+- [`scripts/run_round5_model_bakeoff.py`](scripts/run_round5_model_bakeoff.py): Reusable three-arm DeepSeek runner for PaymentRequired abliterated, Vercel standard 1017, and Vercel 1017 Ultrafast, with readiness checks and identical hidden-test tasks.
+- [`prompts/V4a_tldr_caveman.md`](prompts/V4a_tldr_caveman.md) and [`prompts/V4b_tldr_think_budget.md`](prompts/V4b_tldr_think_budget.md): Controlled next-generation candidates from the prompt lab.
+- DeepSeek V4.1 Flash 1017 Ultrafast serving analysis: public Vercel telemetry showed **1,115 tok/s** median throughput versus **322 tok/s** for standard Fireworks 1017, at **8× token price**. Local quality runs await compatible gateway access; PaymentRequired returned `404 Unknown model`.
+
+### Verified
+- The published V3 prompt in this repository is byte-identical to the original prompt-blog winner.
+- V3 is globally active in Pi but **not** globally configured in Kimi Code; the benchmark injects it explicitly.
+- Fresh Arkade V3 attempts did not reproduce the earlier 7/7 result: four attempts timed out at 600s with incomplete 1/7, 3/7, 4/7, and 3/7 gate outcomes. This motivates repeated controlled comparisons and is not presented as a controlled prompt regression.
+- DeepSeek abliterated baseline completed **12/12** hidden-test passes at **15.56s** and **15,964.8 total tokens** per task on average; raw telemetry is preserved in `rounds/round5/`. Standard and Ultrafast 1017 comparisons remain pending gateway access.
+- Hardened the prompt runner after Kimi OAuth DNS/timeout/refresh-lock failures: infrastructure cells are excluded and retried with backoff, partial work is reset, valid cells resume, and final results are written separately from the attempt log.
+
+---
+
 ## [2026-11-19] — Round 4 Hermetic Benchmark & Sandbox-Leak Postmortem
 
 ### Security & Benchmark Integrity Fix

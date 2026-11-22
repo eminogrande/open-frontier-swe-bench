@@ -1,0 +1,18 @@
+{
+  "seed": 20261122,
+  "arms": {
+    "abliterated_pr": {
+      "runs": 12,
+      "passes": 12,
+      "pass_rate": 1.0,
+      "mean_total_tokens": 15964.8,
+      "mean_output_tokens": 1812.6,
+      "mean_wall_s": 15.56,
+      "mean_end_to_end_output_tok_s": 118.96,
+      "mean_code_loc": 39.5,
+      "expected_tokens_per_pass": 15964.8,
+      "expected_wall_s_per_pass": 15.56,
+      "reported_cost_usd": 0
+    }
+  }
+}

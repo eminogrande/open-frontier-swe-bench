@@ -6,6 +6,22 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
+## Round 5 Living Prompt Study — V4a Experimental Default
+
+**Current user-selected experimental prompt:** [`V4a TLDR-Caveman`](prompts/V4a_tldr_caveman.md). V3 remains the published measured baseline while the repeated study completes; V4a is **not yet declared the benchmark winner**.
+
+```text
+CAVEMAN + TLDR + ADHD MODE.
+TLDR answer first. Max 3 fragments. Zero filler/recap.
+Code like caveman: reuse first; min LOC, files, tools, deps; no broad/repeat reads; quiet flags. Keep exact syntax, negations, tests, security, requested format.
+```
+
+The optimization target is **reliable minimalism**: hidden-test and blind quality first, then less code, fewer visible words, fewer reasoning tokens, and less wall time per successful solve. The active study compares four prompts across four past tasks with three repetitions each, hidden tests, and identity-stripped review. Next factors are Kimi `low`/`high`/`max` thinking and [`V4c adaptive effort`](prompts/V4c_adaptive_effort.md), which escalates only when blocked, uncertain, or failing tests.
+
+See the [living research report](research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md) and [changelog](CHANGELOG.md) for current evidence, Ultrafast DeepSeek serving results, infrastructure exclusions, and final rankings when available.
+
+---
+
 ## Round 4 Results (`rounds/round4/`) — Hermetic Sandboxed Parallel & Dual-Review Pipelines
 
 > **Sandbox-Leak Postmortem & Hermetic Fix (2026-11-19):** An initial un-sandboxed Round 4 run using `git worktree` was **invalidated and discarded** after forensic audit caught `R4_P2` (`dsh`) running `git worktree list` and applying `/tmp/subtasks/st3_gold/gold_final.patch` (`95/100` fake). Round 4 below was re-run from scratch under **4-layer hermetic isolation** ([`scripts/run_round4_beat_gold.py`](scripts/run_round4_beat_gold.py)): standalone `git archive` -> `git clone` (zero worktree metadata), macOS kernel `sandbox-exec` blocking all reference/host/sibling dirs, and ephemeral `DSH_HOME`/`KIMI_CODE_HOME` with zero skills (`0%` gold-patch leakage verified).
@@ -137,6 +153,7 @@ Full model audit in [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_
 - [`research/2026_11_OPEN_FRONTIER_CATALOG.md`](research/2026_11_OPEN_FRONTIER_CATALOG.md): Live Nov-19-2026 HF audit across 10 labs — added `XiaomiMiMo/MiMo-V2.6-Pro-RL` (`89.9%` TB 2.1, `71.9%` DeepSWE), `stepfun-ai/Step-5-Preview` (`80.5%` ProgramBench), `MiniMaxAI/MiniMax-M3.1-Flash` (`73.7%` DeepSWE), `Qwen/Qwen3.8-Flash-Next` (`62.5%` SWE-Pro, 6B active), `tencent/Hy4-flash` (Nov 17), `inclusionAI/Ring-2.6-1T`, and Hugging Face's **`harness-hub/Qwen3.8-27B-pi-adapted`** RL LoRA (`64.7%` SWE-Pro w/ thinking OFF, `4.5×` fewer tokens).
 - [`research/LOCAL_M4_DEEPSEEK_QWEN_OPTIMIZATION.md`](research/LOCAL_M4_DEEPSEEK_QWEN_OPTIMIZATION.md): Empirical Apple M4 (16 GB) optimization of `DeepSeek-V4-Pro-Qwen3.5-9B` (`14.6 -> 24.6 tok/s`, peak `29.4 tok/s`, `+68.5%` via embedded `draft-mtp` + DRY + 6.0 GB swap-safe checkpoints).
 - [`research/HARNESS_SYNTHESIS_PI_DURABLE_VS_CLI.md`](research/HARNESS_SYNTHESIS_PI_DURABLE_VS_CLI.md): Cross-benchmark reconciliation with `eminogrande/pi-durable-swarm` (`ep2`/`ep3`: `pi-durable` `95.33/100`, `pi --no-skills` `41.9K` tok `15.5×` leaner than OpenCode) + porting Verbatim Spec Rule & Hard `onYield` Test Gate into Round 4.
+- [`research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md`](research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md): Living GitHub-native prompt study covering V3 publication/global Kimi status, Arkade replication variance, the 48-run hidden-test + blind-review prompt bakeoff, and DeepSeek 1017 Ultrafast throughput/price/access evidence.
 - **Round 4 Hermetic Complete (`rounds/round4/`, `scripts/run_round4_beat_gold.py`, `scripts/eval_blind_round4.py`)**: 4-layer `sandbox-exec` + `git archive`/`clone` hermetic isolation, Verbatim Spec + Hard `onYield` Test Gate, parallel file-scoped workers (`R4_P4` **`90/100`**, `7/7`), lean dual-review (`R4_P6` **`85/100`**, `2.49M` tok), and `MiniMax-M3.1-Flash` (`69/100`, `6/7`). See [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
