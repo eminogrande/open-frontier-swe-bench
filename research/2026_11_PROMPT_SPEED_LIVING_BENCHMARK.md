@@ -103,6 +103,8 @@ Analysis runner: [`scripts/analyze_round5_trajectories.py`](../scripts/analyze_r
 
 The next ablation is [`V5 clear action contract`](../prompts/V5_clear_action_contract.md) plus provided visible smoke checks. It makes the execution order and scope explicit: stay in the working directory, use named files/checks, implement, check, stop, and iterate only on failure or concrete uncertainty. The goal is to remove test hunting and reinterpretation while preserving hidden-test quality.
 
+V5's `reuse existing code` rationale is **untested** and may itself encourage exploration or forced abstractions. [`V6 operational minimalism`](../prompts/V6_operational_minimalism.md) therefore removes CAVEMAN/ADHD/TLDR/persona language and `reuse first` entirely. It retains only operational instructions: correctness first, smallest complete root-cause change, scoped inspection, focused checks, and iteration only after failure or concrete uncertainty. V6 is a candidate, not an activated or measured default.
+
 ## DeepSeek V4.1 Flash 1017 Ultrafast lane
 
 `deepseek/deepseek-v4.1-flash-1017-ultrafast` is the **same October 17 model revision** served through Fireworks' accelerated endpoint. It is not an abliterated fine-tune. The relevant comparison is accelerated serving versus standard 1017 serving, with abliterated 1017 retained as a separate arm where useful.
