@@ -16,9 +16,20 @@ TLDR answer first. Max 3 fragments. Zero filler/recap.
 Code like caveman: reuse first; min LOC, files, tools, deps; no broad/repeat reads; quiet flags. Keep exact syntax, negations, tests, security, requested format.
 ```
 
-The optimization target is **reliable minimalism**: hidden-test and blind quality first, then less code, fewer visible words, fewer reasoning tokens, and less wall time per successful solve. The active study compares four prompts across four past tasks with three repetitions each, hidden tests, and identity-stripped review. Next factors are Kimi `low`/`high`/`max` thinking and [`V4c adaptive effort`](prompts/V4c_adaptive_effort.md), which escalates only when blocked, uncertain, or failing tests.
+The optimization target is **reliable minimalism**: hidden-test and blind quality first, then less code, fewer visible words, fewer reasoning tokens, and less wall time per successful solve. The completed study compared four prompts across four past tasks with three repetitions each, hidden tests, and identity-stripped review.
 
-See the [living research report](research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md) and [changelog](CHANGELOG.md) for current evidence, Ultrafast DeepSeek serving results, infrastructure exclusions, and final rankings when available.
+| Prompt | Hidden passes | Blind /100 | LOC | Est. tokens/pass | Mean wall |
+|---|---:|---:|---:|---:|---:|
+| **Stock** | **12/12** | **89.75** | 39.5 | **97,135** | 98.55s |
+| V3 | 11/12 | 83.58 | 31.9 | 105,609 | **75.49s** |
+| **V4a** | 11/12 | 83.08 | **29.2** | 118,759 | 79.70s |
+| V4b | **12/12** | 85.83 | 34.8 | 116,325 | 84.58s |
+
+Stock led quality and expected tokens/pass; V3 was fastest; V4a produced the least code but did not reduce thought or total tokens. V4a remains an experimental global default, not the measured winner. Full artifacts live in `rounds/round5/`.
+
+Next factors are Kimi `low`/`high`/`max` thinking, [`V4c adaptive effort`](prompts/V4c_adaptive_effort.md), and [`V5 clear action contract`](prompts/V5_clear_action_contract.md). Trajectory analysis showed that V4a increased reasoning characters, while DeepSeek repeatedly hunted for unavailable tests; V5 targets that ambiguity with explicit scope/action order and visible smoke checks.
+
+See the [living research report](research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md) and [changelog](CHANGELOG.md) for current evidence, Ultrafast DeepSeek serving results, infrastructure exclusions, and future confirmation rounds.
 
 ---
 

@@ -1,0 +1,122 @@
+{
+  "task": "H1_financial_multifile",
+  "mapping": {
+    "CANDIDATE_A": "V0_stock__H1_financial_multifile__r2",
+    "CANDIDATE_B": "V0_stock__H1_financial_multifile__r1",
+    "CANDIDATE_C": "V4a_tldr_caveman__H1_financial_multifile__r2",
+    "CANDIDATE_D": "V4b_tldr_think_budget__H1_financial_multifile__r3",
+    "CANDIDATE_E": "V3_caveman_adhd__H1_financial_multifile__r3",
+    "CANDIDATE_F": "V0_stock__H1_financial_multifile__r3",
+    "CANDIDATE_G": "V4b_tldr_think_budget__H1_financial_multifile__r1",
+    "CANDIDATE_H": "V4b_tldr_think_budget__H1_financial_multifile__r2",
+    "CANDIDATE_I": "V4a_tldr_caveman__H1_financial_multifile__r3",
+    "CANDIDATE_J": "V3_caveman_adhd__H1_financial_multifile__r1",
+    "CANDIDATE_K": "V4a_tldr_caveman__H1_financial_multifile__r1",
+    "CANDIDATE_L": "V3_caveman_adhd__H1_financial_multifile__r2"
+  },
+  "rc": 0,
+  "judgment": {
+    "scores": {
+      "CANDIDATE_A": {
+        "correctness_40": 40,
+        "robustness_30": 29,
+        "craft_20": 18,
+        "brevity_10": 8,
+        "total_100": 95,
+        "reason": "Fixes all specs; Decimal via str on subtotal/coupon/qty; coupon bounds; duplicate check; concise and correct on all spec examples."
+      },
+      "CANDIDATE_B": {
+        "correctness_40": 37,
+        "robustness_30": 22,
+        "craft_20": 15,
+        "brevity_10": 8,
+        "total_100": 82,
+        "reason": "Passes tests, but discounts.py arithmetic stays float-based (breaks if Decimal subtotal with float coupon); service Decimal path saves it."
+      },
+      "CANDIDATE_C": {
+        "correctness_40": 40,
+        "robustness_30": 27,
+        "craft_20": 17,
+        "brevity_10": 7,
+        "total_100": 91,
+        "reason": "Correct; validates coupon before conversion (Decimal compares fine) and str-converts qty; apply_coupon returns mixed types."
+      },
+      "CANDIDATE_D": {
+        "correctness_40": 37,
+        "robustness_30": 21,
+        "craft_20": 14,
+        "brevity_10": 6,
+        "total_100": 78,
+        "reason": "Always returns Decimal from apply_coupon even for float input, changing API; str-converts qty; otherwise works."
+      },
+      "CANDIDATE_E": {
+        "correctness_40": 10,
+        "robustness_30": 8,
+        "craft_20": 8,
+        "brevity_10": 10,
+        "total_100": 36,
+        "reason": "Hidden tests failed; unchanged code: mutable default items, no validations, no duplicate check, float tax-before-discount math."
+      },
+      "CANDIDATE_F": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 17,
+        "brevity_10": 6,
+        "total_100": 91,
+        "reason": "Correct and Decimal-safe; adds construction-time coupon validation; slightly verbose discount variable."
+      },
+      "CANDIDATE_G": {
+        "correctness_40": 40,
+        "robustness_30": 29,
+        "craft_20": 18,
+        "brevity_10": 7,
+        "total_100": 94,
+        "reason": "Strong: str-converts qty/money, Decimal precision, validations incl. coupon; small redundancy of validating coupon in two places."
+      },
+      "CANDIDATE_H": {
+        "correctness_40": 37,
+        "robustness_30": 22,
+        "craft_20": 14,
+        "brevity_10": 6,
+        "total_100": 79,
+        "reason": "Works, but multiplies Decimal by raw qty (breaks on fractional float qty); apply_coupon typed Decimal-only."
+      },
+      "CANDIDATE_I": {
+        "correctness_40": 40,
+        "robustness_30": 25,
+        "craft_20": 15,
+        "brevity_10": 6,
+        "total_100": 86,
+        "reason": "Correct; uses items or [] fine; but apply_coupon returns Decimal and revenue quantize relies on default context rounding."
+      },
+      "CANDIDATE_J": {
+        "correctness_40": 36,
+        "robustness_30": 23,
+        "craft_20": 15,
+        "brevity_10": 6,
+        "total_100": 80,
+        "reason": "Decimal path correct; float path applies float discount prematurely; bounds check on raw coupon."
+      },
+      "CANDIDATE_K": {
+        "correctness_40": 37,
+        "robustness_30": 22,
+        "craft_20": 14,
+        "brevity_10": 6,
+        "total_100": 79,
+        "reason": "Works, but raw qty multiply breaks fractional qty; stores both orders and totals (unnecessary duplicate state)."
+      },
+      "CANDIDATE_L": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 17,
+        "brevity_10": 6,
+        "total_100": 91,
+        "reason": "Correct and Decimal-safe with explicit constants; verbose and mixed-type apply_coupon return."
+      }
+    },
+    "winner": "CANDIDATE_A",
+    "summary": "A is correct on all specs, uses Decimal throughout with str-converted qty/money, and is more concise than similarly safe G/F/L while E is the only failure."
+  },
+  "raw": "{\"scores\": {\"CANDIDATE_A\": {\"correctness_40\": 40, \"robustness_30\": 29, \"craft_20\": 18, \"brevity_10\": 8, \"total_100\": 95, \"reason\": \"Fixes all specs; Decimal via str on subtotal/coupon/qty; coupon bounds; duplicate check; concise and correct on all spec examples.\"}, \"CANDIDATE_B\": {\"correctness_40\": 37, \"robustness_30\": 22, \"craft_20\": 15, \"brevity_10\": 8, \"total_100\": 82, \"reason\": \"Passes tests, but discounts.py arithmetic stays float-based (breaks if Decimal subtotal with float coupon); service Decimal path saves it.\"}, \"CANDIDATE_C\": {\"correctness_40\": 40, \"robustness_30\": 27, \"craft_20\": 17, \"brevity_10\": 7, \"total_100\": 91, \"reason\": \"Correct; validates coupon before conversion (Decimal compares fine) and str-converts qty; apply_coupon returns mixed types.\"}, \"CANDIDATE_D\": {\"correctness_40\": 37, \"robustness_30\": 21, \"craft_20\": 14, \"brevity_10\": 6, \"total_100\": 78, \"reason\": \"Always returns Decimal from apply_coupon even for float input, changing API; str-converts qty; otherwise works.\"}, \"CANDIDATE_E\": {\"correctness_40\": 10, \"robustness_30\": 8, \"craft_20\": 8, \"brevity_10\": 10, \"total_100\": 36, \"reason\": \"Hidden tests failed; unchanged code: mutable default items, no validations, no duplicate check, float tax-before-discount math.\"}, \"CANDIDATE_F\": {\"correctness_40\": 40, \"robustness_30\": 28, \"craft_20\": 17, \"brevity_10\": 6, \"total_100\": 91, \"reason\": \"Correct and Decimal-safe; adds construction-time coupon validation; slightly verbose discount variable.\"}, \"CANDIDATE_G\": {\"correctness_40\": 40, \"robustness_30\": 29, \"craft_20\": 18, \"brevity_10\": 7, \"total_100\": 94, \"reason\": \"Strong: str-converts qty/money, Decimal precision, validations incl. coupon; small redundancy of validating coupon in two places.\"}, \"CANDIDATE_H\": {\"correctness_40\": 37, \"robustness_30\": 22, \"craft_20\": 14, \"brevity_10\": 6, \"total_100\": 79, \"reason\": \"Works, but multiplies Decimal by raw qty (breaks on fractional float qty); apply_coupon typed Decimal-only.\"}, \"CANDIDATE_I\": {\"correctness_40\": 40, \"robustness_30\": 25, \"craft_20\": 15, \"brevity_10\": 6, \"total_100\": 86, \"reason\": \"Correct; uses items or [] fine; but apply_coupon returns Decimal and revenue quantize relies on default context rounding.\"}, \"CANDIDATE_J\": {\"correctness_40\": 36, \"robustness_30\": 23, \"craft_20\": 15, \"brevity_10\": 6, \"total_100\": 80, \"reason\": \"Decimal path correct; float path applies float discount prematurely; bounds check on raw coupon.\"}, \"CANDIDATE_K\": {\"correctness_40\": 37, \"robustness_30\": 22, \"craft_20\": 14, \"brevity_10\": 6, \"total_100\": 79, \"reason\": \"Works, but raw qty multiply breaks fractional qty; stores both orders and totals (unnecessary duplicate state).\"}, \"CANDIDATE_L\": {\"correctness_40\": 40, \"robustness_30\": 28, \"craft_20\": 17, \"brevity_10\": 6, \"total_100\": 91, \"reason\": \"Correct and Decimal-safe with explicit constants; verbose and mixed-type apply_coupon return.\"}}, \"winner\": \"CANDIDATE_A\", \"summary\": \"A is correct on all specs, uses Decimal throughout with str-converted qty/money, and is more concise than similarly safe G/F/L while E is the only failure.\"}",
+  "stderr": ""
+}

@@ -1,0 +1,122 @@
+{
+  "task": "H2_jwt_security",
+  "mapping": {
+    "CANDIDATE_A": "V3_caveman_adhd__H2_jwt_security__r2",
+    "CANDIDATE_B": "V4a_tldr_caveman__H2_jwt_security__r2",
+    "CANDIDATE_C": "V3_caveman_adhd__H2_jwt_security__r1",
+    "CANDIDATE_D": "V4a_tldr_caveman__H2_jwt_security__r3",
+    "CANDIDATE_E": "V0_stock__H2_jwt_security__r2",
+    "CANDIDATE_F": "V0_stock__H2_jwt_security__r3",
+    "CANDIDATE_G": "V0_stock__H2_jwt_security__r1",
+    "CANDIDATE_H": "V4b_tldr_think_budget__H2_jwt_security__r3",
+    "CANDIDATE_I": "V3_caveman_adhd__H2_jwt_security__r3",
+    "CANDIDATE_J": "V4b_tldr_think_budget__H2_jwt_security__r1",
+    "CANDIDATE_K": "V4b_tldr_think_budget__H2_jwt_security__r2",
+    "CANDIDATE_L": "V4a_tldr_caveman__H2_jwt_security__r1"
+  },
+  "rc": 0,
+  "judgment": {
+    "scores": {
+      "CANDIDATE_A": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 17,
+        "brevity_10": 7,
+        "total_100": 92,
+        "reason": "Correct strict regex and base64url length checks, constant-time compare, catch-all wrapping; solid though slightly verbose."
+      },
+      "CANDIDATE_B": {
+        "correctness_40": 40,
+        "robustness_30": 27,
+        "craft_20": 15,
+        "brevity_10": 6,
+        "total_100": 88,
+        "reason": "Nested helpers, byte-level regex, binascii caught; no explicit %4==1 length check but b64decode covers it."
+      },
+      "CANDIDATE_C": {
+        "correctness_40": 40,
+        "robustness_30": 26,
+        "craft_20": 16,
+        "brevity_10": 7,
+        "total_100": 89,
+        "reason": "Membership scan over each char is O(n) but correct; no length check, relies on outer binascii catch; redundant isinstance alg check."
+      },
+      "CANDIDATE_D": {
+        "correctness_40": 2,
+        "robustness_30": 1,
+        "craft_20": 5,
+        "brevity_10": 2,
+        "total_100": 10,
+        "reason": "File contains only the spec comments, no implementation, despite hidden tests 'passed' claim."
+      },
+      "CANDIDATE_E": {
+        "correctness_40": 40,
+        "robustness_30": 29,
+        "craft_20": 18,
+        "brevity_10": 6,
+        "total_100": 93,
+        "reason": "Named helpers, explicit invalid-length rejection, precise error messages, clean validation order, constant-time compare."
+      },
+      "CANDIDATE_F": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 16,
+        "brevity_10": 6,
+        "total_100": 90,
+        "reason": "Length check and \\Z regex; generator-throw lambda for reject_constant is terse but less readable."
+      },
+      "CANDIDATE_G": {
+        "correctness_40": 40,
+        "robustness_30": 26,
+        "craft_20": 14,
+        "brevity_10": 6,
+        "total_100": 86,
+        "reason": "Works via binascii catch and extra secret type check, but decodes all segments into a list and inlines the 28-char charset."
+      },
+      "CANDIDATE_H": {
+        "correctness_40": 40,
+        "robustness_30": 26,
+        "craft_20": 16,
+        "brevity_10": 7,
+        "total_100": 89,
+        "reason": "Correct and compact; no explicit length check, decode errors funneled through helper."
+      },
+      "CANDIDATE_I": {
+        "correctness_40": 34,
+        "robustness_30": 22,
+        "craft_20": 14,
+        "brevity_10": 6,
+        "total_100": 76,
+        "reason": "Signature/header decode errors like binascii.Error escape the outer except (only TypeError/ValueError caught), breaking the 'always ValueError' contract."
+      },
+      "CANDIDATE_J": {
+        "correctness_40": 34,
+        "robustness_30": 22,
+        "craft_20": 14,
+        "brevity_10": 8,
+        "total_100": 78,
+        "reason": "binascii.Error and invalid-length cases are not caught by the outer handler, so they can escape as non-ValueError; otherwise concise."
+      },
+      "CANDIDATE_K": {
+        "correctness_40": 40,
+        "robustness_30": 27,
+        "craft_20": 15,
+        "brevity_10": 6,
+        "total_100": 88,
+        "reason": "binascii caught and safe; unusual rsplit for signing input and a re-raise-inside-except pattern; no explicit length check."
+      },
+      "CANDIDATE_L": {
+        "correctness_40": 40,
+        "robustness_30": 29,
+        "craft_20": 17,
+        "brevity_10": 6,
+        "total_100": 92,
+        "reason": "Explicit invalid-length check, per-segment regex pre-scan, constant-time compare, careful claim typing; slightly wordy closures."
+      }
+    },
+    "winner": "CANDIDATE_E",
+    "summary": "E is fully correct and robust with the cleanest structure and precise error messages; C/D/I/J have weaker error-handling (D not even implemented, I/J let binascii errors escape)."
+  },
+  "raw": "{\"scores\": {\"CANDIDATE_A\": {\"correctness_40\": 40, \"robustness_30\": 28, \"craft_20\": 17, \"brevity_10\": 7, \"total_100\": 92, \"reason\": \"Correct strict regex and base64url length checks, constant-time compare, catch-all wrapping; solid though slightly verbose.\"}, \"CANDIDATE_B\": {\"correctness_40\": 40, \"robustness_30\": 27, \"craft_20\": 15, \"brevity_10\": 6, \"total_100\": 88, \"reason\": \"Nested helpers, byte-level regex, binascii caught; no explicit %4==1 length check but b64decode covers it.\"}, \"CANDIDATE_C\": {\"correctness_40\": 40, \"robustness_30\": 26, \"craft_20\": 16, \"brevity_10\": 7, \"total_100\": 89, \"reason\": \"Membership scan over each char is O(n) but correct; no length check, relies on outer binascii catch; redundant isinstance alg check.\"}, \"CANDIDATE_D\": {\"correctness_40\": 2, \"robustness_30\": 1, \"craft_20\": 5, \"brevity_10\": 2, \"total_100\": 10, \"reason\": \"File contains only the spec comments, no implementation, despite hidden tests 'passed' claim.\"}, \"CANDIDATE_E\": {\"correctness_40\": 40, \"robustness_30\": 29, \"craft_20\": 18, \"brevity_10\": 6, \"total_100\": 93, \"reason\": \"Named helpers, explicit invalid-length rejection, precise error messages, clean validation order, constant-time compare.\"}, \"CANDIDATE_F\": {\"correctness_40\": 40, \"robustness_30\": 28, \"craft_20\": 16, \"brevity_10\": 6, \"total_100\": 90, \"reason\": \"Length check and \\\\Z regex; generator-throw lambda for reject_constant is terse but less readable.\"}, \"CANDIDATE_G\": {\"correctness_40\": 40, \"robustness_30\": 26, \"craft_20\": 14, \"brevity_10\": 6, \"total_100\": 86, \"reason\": \"Works via binascii catch and extra secret type check, but decodes all segments into a list and inlines the 28-char charset.\"}, \"CANDIDATE_H\": {\"correctness_40\": 40, \"robustness_30\": 26, \"craft_20\": 16, \"brevity_10\": 7, \"total_100\": 89, \"reason\": \"Correct and compact; no explicit length check, decode errors funneled through helper.\"}, \"CANDIDATE_I\": {\"correctness_40\": 34, \"robustness_30\": 22, \"craft_20\": 14, \"brevity_10\": 6, \"total_100\": 76, \"reason\": \"Signature/header decode errors like binascii.Error escape the outer except (only TypeError/ValueError caught), breaking the 'always ValueError' contract.\"}, \"CANDIDATE_J\": {\"correctness_40\": 34, \"robustness_30\": 22, \"craft_20\": 14, \"brevity_10\": 8, \"total_100\": 78, \"reason\": \"binascii.Error and invalid-length cases are not caught by the outer handler, so they can escape as non-ValueError; otherwise concise.\"}, \"CANDIDATE_K\": {\"correctness_40\": 40, \"robustness_30\": 27, \"craft_20\": 15, \"brevity_10\": 6, \"total_100\": 88, \"reason\": \"binascii caught and safe; unusual rsplit for signing input and a re-raise-inside-except pattern; no explicit length check.\"}, \"CANDIDATE_L\": {\"correctness_40\": 40, \"robustness_30\": 29, \"craft_20\": 17, \"brevity_10\": 6, \"total_100\": 92, \"reason\": \"Explicit invalid-length check, per-segment regex pre-scan, constant-time compare, careful claim typing; slightly wordy closures.\"}}, \"winner\": \"CANDIDATE_E\", \"summary\": \"E is fully correct and robust with the cleanest structure and precise error messages; C/D/I/J have weaker error-handling (D not even implemented, I/J let binascii errors escape).\"}",
+  "stderr": ""
+}

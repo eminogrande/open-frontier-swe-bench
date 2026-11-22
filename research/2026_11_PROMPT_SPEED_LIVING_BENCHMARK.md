@@ -12,9 +12,21 @@ TLDR answer first. Max 3 fragments. Zero filler/recap.
 Code like caveman: reuse first; min LOC, files, tools, deps; no broad/repeat reads; quiet flags. Keep exact syntax, negations, tests, security, requested format.
 ```
 
-Global Kimi activation is deliberately deferred until the current controlled run finishes because `$KIMI_CODE_HOME/AGENTS.md` would otherwise be injected into every prompt arm and invalidate the comparison. Activation will use additive `AGENTS.md`, not a V4a-only `SYSTEM.md` override.
+V4a is now active in `$KIMI_CODE_HOME/AGENTS.md`; a fresh Kimi session's rendered `profile.bind` system prompt was checked for the exact text. Additive `AGENTS.md` is used rather than a V4a-only `SYSTEM.md` override. Later controlled runs use a preserved pre-rollout system-prompt snapshot so the global rollout cannot contaminate them.
 
-The next candidate, [`V4c adaptive effort`](../prompts/V4c_adaptive_effort.md), preserves the same minimalism but explicitly permits deeper reasoning and iteration when blocked, uncertain, or failing tests. Kimi `low`/`high`/`max` reasoning will be compared separately so prompt text and thinking effort are not confounded.
+The next candidate, [`V4c adaptive effort`](../prompts/V4c_adaptive_effort.md), preserves the same minimalism but explicitly permits deeper reasoning and iteration when blocked, uncertain, or failing tests. Kimi `low`/`high`/`max` reasoning will be compared separately so prompt text and thinking effort are not confounded. The CLI supports per-process `KIMI_MODEL_THINKING_EFFORT`, so these arms do not require persistent config changes.
+
+## Representative confirmation suite
+
+Small tasks are useful for cheap rejection, not for declaring a global coding default. Finalists should advance to a stratified suite:
+
+1. **Brownfield integration:** the frozen Arkade `#172` task and its seven deterministic security/protocol gates.
+2. **Real-repository repair:** a language-stratified DeepSWE v1.1 sample with offline execution and hidden tests.
+3. **Systems and debugging:** a Terminal-Bench sample covering configuration, concurrency, and failing-toolchain diagnosis.
+4. **Past greenfield work:** the earlier multi-file concurrency and debugging episodes, retaining their original hidden checks.
+5. **Security and exact contracts:** authenticated routes, IDOR resistance, financial rounding, and exact output schemas.
+
+Use three attempts per cell, report macro quality by task family, completion and all-three reliability, expected tokens/seconds per solve, and blind code review. Test `low`, `high`, and `max` thinking independently. An adaptive orchestration arm may start at `low`, escalate to `high` after a genuine visible-test failure, and reserve `max` for a second failure or long-horizon uncertainty; hidden tests must remain reserved for final scoring.
 
 This is the GitHub-native continuation of the original [agent-prompt-brevity-bench](https://github.com/eminogrande/agent-prompt-brevity-bench) study. HackMD is a historical snapshot, not the canonical source for new findings.
 
@@ -67,9 +79,29 @@ Runner: [`scripts/run_round5_prompt_bakeoff.py`](../scripts/run_round5_prompt_ba
 - **Efficiency:** total/input/output tokens, tool calls, LOC, wall time, expected tokens per successful attempt, and expected seconds per successful attempt.
 - **Selection:** reliability first, then Pareto comparison of blind quality, tokens, and time. No weighted winner is declared when the quality arms are statistically indistinguishable.
 
-**Results:** pending completion of the 48-run study. The single V3 smoke attempt passed the retry task in 48.33s with 72,205 total tokens, 1,464 output tokens, four tool calls, and 21 LOC; this is a runner validation, not a comparative result.
+**Results:** 48 valid cells completed; 46 passed hidden tests. OAuth failures were excluded and retried, not counted as prompt failures. Four cells timed out; two timeout cells left passing code. Token means below use only runs with telemetry (`token runs`), while wall time and pass rates include every valid attempt. Expected tokens/pass adjusts the measured mean by the attempt pass rate and remains an estimate for arms with missing timeout telemetry.
 
-During the initial full run, 11 of the first 12 valid attempts passed and one V3 financial-task attempt timed out. Seven subsequent cells hit Kimi OAuth DNS/timeout errors or a transient refresh-lock conflict. Those cells are excluded from quality scoring rather than counted as prompt failures. The runner now retries infrastructure errors with exponential backoff, resets partial work before each retry, resumes valid cells, and writes a clean `results_final.jsonl`.
+| Prompt | Hidden passes | Timeouts | Blind /100 | LOC | Mean tokens (token runs) | Est. tokens/pass | Mean wall |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **Stock** | **12/12** | 2 | **89.75** | 39.5 | 97,135 (10) | **97,135** | 98.55s |
+| V3 | 11/12 | 1 | 83.58 | 31.9 | **96,808 (11)** | 105,609 | **75.49s** |
+| **V4a** | 11/12 | 1 | 83.08 | **29.2** | 108,863 (11) | 118,759 | 79.70s |
+| V4b | **12/12** | **0** | 85.83 | 34.8 | 116,325 (12) | 116,325 | 84.58s |
+
+Raw artifacts: [`prompt_results.jsonl`](../rounds/round5/prompt_results.jsonl), [`prompt_summary.json`](../rounds/round5/prompt_summary.json), and `prompt_blind_*.json` in `rounds/round5/`.
+
+**Interpretation:** stock is the quality and expected-token-per-pass leader on this small suite but has the slowest mean wall time. V3 is fastest and nearly ties stock on measured mean tokens, but has lower blind quality. V4a wins only code brevity; it did **not** reduce reasoning, tokens, or quality loss. V4b completed every run without a timeout but burned the most tokens. Three repetitions per task are enough to reject simplistic claims, not enough to establish a universal prompt winner. V4a remains the user-selected experimental global default, not the measured quality winner.
+
+## Trajectory analysis: confusion versus useful thought
+
+Analysis runner: [`scripts/analyze_round5_trajectories.py`](../scripts/analyze_round5_trajectories.py). Raw chain-of-thought is not published; the report retains aggregate reasoning length, interpretation/test-hunting signals, tool behavior, and useful correctness signals.
+
+- **V4a did not shorten thought:** analyzable V4a runs averaged **6,335** reasoning characters versus **5,071** for V3, with more correctness deliberation and more brevity negotiation.
+- **The financial task caused the worst reinterpretation:** the largest Kimi financial trace reached 23,980 reasoning characters; V4a's largest reached 15,117. This is a task-clarity problem as well as a prompt problem.
+- **DeepSeek test hunting was concrete:** all three financial runs searched parent directories. One run spent **1,306 reasoning tokens** overall, including a long deliberation about data representation and unavailable tests, before implementing.
+- **Useful thought exists:** Decimal rounding, signature boundaries, validation, and security reasoning should not be optimized away. Pattern counts are review signals, not automatic proof of waste.
+
+The next ablation is [`V5 clear action contract`](../prompts/V5_clear_action_contract.md) plus provided visible smoke checks. It makes the execution order and scope explicit: stay in the working directory, use named files/checks, implement, check, stop, and iterate only on failure or concrete uncertainty. The goal is to remove test hunting and reinterpretation while preserving hidden-test quality.
 
 ## DeepSeek V4.1 Flash 1017 Ultrafast lane
 

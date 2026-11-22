@@ -1,0 +1,122 @@
+{
+  "task": "T2_duration_feature",
+  "mapping": {
+    "CANDIDATE_A": "V4a_tldr_caveman__T2_duration_feature__r2",
+    "CANDIDATE_B": "V4a_tldr_caveman__T2_duration_feature__r1",
+    "CANDIDATE_C": "V4b_tldr_think_budget__T2_duration_feature__r1",
+    "CANDIDATE_D": "V0_stock__T2_duration_feature__r3",
+    "CANDIDATE_E": "V3_caveman_adhd__T2_duration_feature__r3",
+    "CANDIDATE_F": "V0_stock__T2_duration_feature__r1",
+    "CANDIDATE_G": "V4a_tldr_caveman__T2_duration_feature__r3",
+    "CANDIDATE_H": "V3_caveman_adhd__T2_duration_feature__r1",
+    "CANDIDATE_I": "V4b_tldr_think_budget__T2_duration_feature__r2",
+    "CANDIDATE_J": "V3_caveman_adhd__T2_duration_feature__r2",
+    "CANDIDATE_K": "V4b_tldr_think_budget__T2_duration_feature__r3",
+    "CANDIDATE_L": "V0_stock__T2_duration_feature__r2"
+  },
+  "rc": 0,
+  "judgment": {
+    "scores": {
+      "CANDIDATE_A": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 17,
+        "brevity_10": 8,
+        "total_100": 93,
+        "reason": "Fullmatch validation plus anchored component extraction; accepts both '.5h' and '1.h', handles signs and case correctly with minimal duplication."
+      },
+      "CANDIDATE_B": {
+        "correctness_40": 40,
+        "robustness_30": 25,
+        "craft_20": 12,
+        "brevity_10": 5,
+        "total_100": 82,
+        "reason": "Correct but uses two different regexes and a convoluted inner loop to recover unit suffix; most verbose implementation."
+      },
+      "CANDIDATE_C": {
+        "correctness_40": 40,
+        "robustness_30": 27,
+        "craft_20": 15,
+        "brevity_10": 8,
+        "total_100": 90,
+        "reason": "Correct and robust, but validation pattern duplicates the number/unit fragments instead of reusing one definition."
+      },
+      "CANDIDATE_D": {
+        "correctness_40": 34,
+        "robustness_30": 24,
+        "craft_20": 15,
+        "brevity_10": 7,
+        "total_100": 80,
+        "reason": "Well-structured but number regex rejects '.5h' and '1.h'; also builds needless nested group and second compiled pattern."
+      },
+      "CANDIDATE_E": {
+        "correctness_40": 40,
+        "robustness_30": 26,
+        "craft_20": 13,
+        "brevity_10": 7,
+        "total_100": 86,
+        "reason": "Correct and accepts all decimal forms, but single long regex repeats the component pattern twice and concatenates match groups."
+      },
+      "CANDIDATE_F": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 14,
+        "brevity_10": 6,
+        "total_100": 88,
+        "reason": "Manual scanner validates positions strictly and accepts all decimal forms; per-iteration string slicing and a redundant position==0 check add bulk."
+      },
+      "CANDIDATE_G": {
+        "correctness_40": 38,
+        "robustness_30": 27,
+        "craft_20": 18,
+        "brevity_10": 9,
+        "total_100": 92,
+        "reason": "Shortest correct form with reusable fragments, but number pattern rejects trailing-dot decimals like '1.h'."
+      },
+      "CANDIDATE_H": {
+        "correctness_40": 34,
+        "robustness_30": 24,
+        "craft_20": 15,
+        "brevity_10": 8,
+        "total_100": 81,
+        "reason": "Concise and validated, yet rejects '.5h' and '1.h'; strips input before matching which duplicates normalization work."
+      },
+      "CANDIDATE_I": {
+        "correctness_40": 34,
+        "robustness_30": 24,
+        "craft_20": 13,
+        "brevity_10": 7,
+        "total_100": 78,
+        "reason": "Correct for tested cases but rejects '.5h'/'1.h', and interpolates the whole _TOKEN pattern twice yielding hard-to-read grouped regex."
+      },
+      "CANDIDATE_J": {
+        "correctness_40": 40,
+        "robustness_30": 26,
+        "craft_20": 17,
+        "brevity_10": 9,
+        "total_100": 92,
+        "reason": "Compact and accepts all decimal forms, though lstrip('+-') strips repeated signs and fullmatch lacks explicit surrounding-space anchors (strip compensates)."
+      },
+      "CANDIDATE_K": {
+        "correctness_40": 34,
+        "robustness_30": 24,
+        "craft_20": 13,
+        "brevity_10": 6,
+        "total_100": 77,
+        "reason": "finditer gap logic is more intricate than needed, rejects '.5h' and '1.h', and leaves dead end==0 branch after strip."
+      },
+      "CANDIDATE_L": {
+        "correctness_40": 40,
+        "robustness_30": 27,
+        "craft_20": 16,
+        "brevity_10": 8,
+        "total_100": 91,
+        "reason": "Correct, validated, accepts all decimal forms; slightly repetitive number alternation but clean and readable."
+      }
+    },
+    "winner": "CANDIDATE_A",
+    "summary": "A and G/J tie closely, but A combines fullmatch validation, acceptance of every decimal form, and minimal pattern reuse with the fewest structural risks."
+  },
+  "raw": "{\"scores\":{\"CANDIDATE_A\":{\"correctness_40\":40,\"robustness_30\":28,\"craft_20\":17,\"brevity_10\":8,\"total_100\":93,\"reason\":\"Fullmatch validation plus anchored component extraction; accepts both '.5h' and '1.h', handles signs and case correctly with minimal duplication.\"},\"CANDIDATE_B\":{\"correctness_40\":40,\"robustness_30\":25,\"craft_20\":12,\"brevity_10\":5,\"total_100\":82,\"reason\":\"Correct but uses two different regexes and a convoluted inner loop to recover unit suffix; most verbose implementation.\"},\"CANDIDATE_C\":{\"correctness_40\":40,\"robustness_30\":27,\"craft_20\":15,\"brevity_10\":8,\"total_100\":90,\"reason\":\"Correct and robust, but validation pattern duplicates the number/unit fragments instead of reusing one definition.\"},\"CANDIDATE_D\":{\"correctness_40\":34,\"robustness_30\":24,\"craft_20\":15,\"brevity_10\":7,\"total_100\":80,\"reason\":\"Well-structured but number regex rejects '.5h' and '1.h'; also builds needless nested group and second compiled pattern.\"},\"CANDIDATE_E\":{\"correctness_40\":40,\"robustness_30\":26,\"craft_20\":13,\"brevity_10\":7,\"total_100\":86,\"reason\":\"Correct and accepts all decimal forms, but single long regex repeats the component pattern twice and concatenates match groups.\"},\"CANDIDATE_F\":{\"correctness_40\":40,\"robustness_30\":28,\"craft_20\":14,\"brevity_10\":6,\"total_100\":88,\"reason\":\"Manual scanner validates positions strictly and accepts all decimal forms; per-iteration string slicing and a redundant position==0 check add bulk.\"},\"CANDIDATE_G\":{\"correctness_40\":38,\"robustness_30\":27,\"craft_20\":18,\"brevity_10\":9,\"total_100\":92,\"reason\":\"Shortest correct form with reusable fragments, but number pattern rejects trailing-dot decimals like '1.h'.\"},\"CANDIDATE_H\":{\"correctness_40\":34,\"robustness_30\":24,\"craft_20\":15,\"brevity_10\":8,\"total_100\":81,\"reason\":\"Concise and validated, yet rejects '.5h' and '1.h'; strips input before matching which duplicates normalization work.\"},\"CANDIDATE_I\":{\"correctness_40\":34,\"robustness_30\":24,\"craft_20\":13,\"brevity_10\":7,\"total_100\":78,\"reason\":\"Correct for tested cases but rejects '.5h'/'1.h', and interpolates the whole _TOKEN pattern twice yielding hard-to-read grouped regex.\"},\"CANDIDATE_J\":{\"correctness_40\":40,\"robustness_30\":26,\"craft_20\":17,\"brevity_10\":9,\"total_100\":92,\"reason\":\"Compact and accepts all decimal forms, though lstrip('+-') strips repeated signs and fullmatch lacks explicit surrounding-space anchors (strip compensates).\"},\"CANDIDATE_K\":{\"correctness_40\":34,\"robustness_30\":24,\"craft_20\":13,\"brevity_10\":6,\"total_100\":77,\"reason\":\"finditer gap logic is more intricate than needed, rejects '.5h' and '1.h', and leaves dead end==0 branch after strip.\"},\"CANDIDATE_L\":{\"correctness_40\":40,\"robustness_30\":27,\"craft_20\":16,\"brevity_10\":8,\"total_100\":91,\"reason\":\"Correct, validated, accepts all decimal forms; slightly repetitive number alternation but clean and readable.\"}},\"winner\":\"CANDIDATE_A\",\"summary\":\"A and G/J tie closely, but A combines fullmatch validation, acceptance of every decimal form, and minimal pattern reuse with the fewest structural risks.\"}",
+  "stderr": ""
+}

@@ -1,0 +1,122 @@
+{
+  "task": "T1_retry_bugfix",
+  "mapping": {
+    "CANDIDATE_A": "V3_caveman_adhd__T1_retry_bugfix__r3",
+    "CANDIDATE_B": "V4a_tldr_caveman__T1_retry_bugfix__r1",
+    "CANDIDATE_C": "V3_caveman_adhd__T1_retry_bugfix__r2",
+    "CANDIDATE_D": "V4a_tldr_caveman__T1_retry_bugfix__r2",
+    "CANDIDATE_E": "V4b_tldr_think_budget__T1_retry_bugfix__r1",
+    "CANDIDATE_F": "V4b_tldr_think_budget__T1_retry_bugfix__r3",
+    "CANDIDATE_G": "V0_stock__T1_retry_bugfix__r2",
+    "CANDIDATE_H": "V4a_tldr_caveman__T1_retry_bugfix__r3",
+    "CANDIDATE_I": "V0_stock__T1_retry_bugfix__r3",
+    "CANDIDATE_J": "V3_caveman_adhd__T1_retry_bugfix__r1",
+    "CANDIDATE_K": "V4b_tldr_think_budget__T1_retry_bugfix__r2",
+    "CANDIDATE_L": "V0_stock__T1_retry_bugfix__r1"
+  },
+  "rc": 0,
+  "judgment": {
+    "scores": {
+      "CANDIDATE_A": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 17,
+        "brevity_10": 8,
+        "total_100": 93,
+        "reason": "Correct via single BaseException + isinstance check; terse but ValueError has no message and the combined KI check is less readable."
+      },
+      "CANDIDATE_B": {
+        "correctness_40": 40,
+        "robustness_30": 30,
+        "craft_20": 19,
+        "brevity_10": 8,
+        "total_100": 97,
+        "reason": "Correct counts/backoff, one clean guard clause, informative ValueError, isinstance robust to any retry_on including BaseException; handles KI/SystemExit before filtering."
+      },
+      "CANDIDATE_C": {
+        "correctness_40": 40,
+        "robustness_30": 30,
+        "craft_20": 18,
+        "brevity_10": 6,
+        "total_100": 94,
+        "reason": "Correct and robust but splits validation into two raises and reorders exception checks, adding a few lines over B."
+      },
+      "CANDIDATE_D": {
+        "correctness_40": 40,
+        "robustness_30": 29,
+        "craft_20": 17,
+        "brevity_10": 8,
+        "total_100": 94,
+        "reason": "Correct, single combined raise, but generic ValueError message and longer condition line."
+      },
+      "CANDIDATE_E": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 16,
+        "brevity_10": 9,
+        "total_100": 93,
+        "reason": "Shortest correct design using except retry_on; KI clause first is safe, but ValueError carries no message and depends on retry_on being a valid exception class."
+      },
+      "CANDIDATE_F": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 15,
+        "brevity_10": 9,
+        "total_100": 92,
+        "reason": "Tight and correct; duplicated bare ValueError and no message reduce craft."
+      },
+      "CANDIDATE_G": {
+        "correctness_40": 40,
+        "robustness_30": 30,
+        "craft_20": 18,
+        "brevity_10": 6,
+        "total_100": 94,
+        "reason": "Correct with messages, but two validation blocks add verbosity versus B."
+      },
+      "CANDIDATE_H": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 16,
+        "brevity_10": 9,
+        "total_100": 93,
+        "reason": "Concise except retry_on form; generic ValueError message and no isinstance hardening."
+      },
+      "CANDIDATE_I": {
+        "correctness_40": 40,
+        "robustness_30": 29,
+        "craft_20": 18,
+        "brevity_10": 7,
+        "total_100": 94,
+        "reason": "Correct, single combined raise with informative-style message; multi-line condition slightly less crisp than B."
+      },
+      "CANDIDATE_J": {
+        "correctness_40": 40,
+        "robustness_30": 29,
+        "craft_20": 16,
+        "brevity_10": 8,
+        "total_100": 93,
+        "reason": "Correct with isinstance, but bare ValueError and combined condition hurt polish."
+      },
+      "CANDIDATE_K": {
+        "correctness_40": 40,
+        "robustness_30": 30,
+        "craft_20": 17,
+        "brevity_10": 7,
+        "total_100": 94,
+        "reason": "Robust with KI-first clause and isinstance on a single raise, but the KI clause is partly redundant and adds lines."
+      },
+      "CANDIDATE_L": {
+        "correctness_40": 40,
+        "robustness_30": 28,
+        "craft_20": 16,
+        "brevity_10": 9,
+        "total_100": 93,
+        "reason": "Correct and compact via except retry_on, but redundant KI clause and no message."
+      }
+    },
+    "winner": "CANDIDATE_B",
+    "summary": "All candidates satisfy the spec; B wins on correct retry semantics, a single informative validation guard, robust isinstance filtering, and clean exception ordering at near-minimal length."
+  },
+  "raw": "{\"scores\":{\"CANDIDATE_A\":{\"correctness_40\":40,\"robustness_30\":28,\"craft_20\":17,\"brevity_10\":8,\"total_100\":93,\"reason\":\"Correct via single BaseException + isinstance check; terse but ValueError has no message and the combined KI check is less readable.\"},\"CANDIDATE_B\":{\"correctness_40\":40,\"robustness_30\":30,\"craft_20\":19,\"brevity_10\":8,\"total_100\":97,\"reason\":\"Correct counts/backoff, one clean guard clause, informative ValueError, isinstance robust to any retry_on including BaseException; handles KI/SystemExit before filtering.\"},\"CANDIDATE_C\":{\"correctness_40\":40,\"robustness_30\":30,\"craft_20\":18,\"brevity_10\":6,\"total_100\":94,\"reason\":\"Correct and robust but splits validation into two raises and reorders exception checks, adding a few lines over B.\"},\"CANDIDATE_D\":{\"correctness_40\":40,\"robustness_30\":29,\"craft_20\":17,\"brevity_10\":8,\"total_100\":94,\"reason\":\"Correct, single combined raise, but generic ValueError message and longer condition line.\"},\"CANDIDATE_E\":{\"correctness_40\":40,\"robustness_30\":28,\"craft_20\":16,\"brevity_10\":9,\"total_100\":93,\"reason\":\"Shortest correct design using except retry_on; KI clause first is safe, but ValueError carries no message and depends on retry_on being a valid exception class.\"},\"CANDIDATE_F\":{\"correctness_40\":40,\"robustness_30\":28,\"craft_20\":15,\"brevity_10\":9,\"total_100\":92,\"reason\":\"Tight and correct; duplicated bare ValueError and no message reduce craft.\"},\"CANDIDATE_G\":{\"correctness_40\":40,\"robustness_30\":30,\"craft_20\":18,\"brevity_10\":6,\"total_100\":94,\"reason\":\"Correct with messages, but two validation blocks add verbosity versus B.\"},\"CANDIDATE_H\":{\"correctness_40\":40,\"robustness_30\":28,\"craft_20\":16,\"brevity_10\":9,\"total_100\":93,\"reason\":\"Concise except retry_on form; generic ValueError message and no isinstance hardening.\"},\"CANDIDATE_I\":{\"correctness_40\":40,\"robustness_30\":29,\"craft_20\":18,\"brevity_10\":7,\"total_100\":94,\"reason\":\"Correct, single combined raise with informative-style message; multi-line condition slightly less crisp than B.\"},\"CANDIDATE_J\":{\"correctness_40\":40,\"robustness_30\":29,\"craft_20\":16,\"brevity_10\":8,\"total_100\":93,\"reason\":\"Correct with isinstance, but bare ValueError and combined condition hurt polish.\"},\"CANDIDATE_K\":{\"correctness_40\":40,\"robustness_30\":30,\"craft_20\":17,\"brevity_10\":7,\"total_100\":94,\"reason\":\"Robust with KI-first clause and isinstance on a single raise, but the KI clause is partly redundant and adds lines.\"},\"CANDIDATE_L\":{\"correctness_40\":40,\"robustness_30\":28,\"craft_20\":16,\"brevity_10\":9,\"total_100\":93,\"reason\":\"Correct and compact via except retry_on, but redundant KI clause and no message.\"}},\"winner\":\"CANDIDATE_B\",\"summary\":\"All candidates satisfy the spec; B wins on correct retry semantics, a single informative validation guard, robust isinstance filtering, and clean exception ordering at near-minimal length.\"}",
+  "stderr": ""
+}

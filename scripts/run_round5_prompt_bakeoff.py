@@ -15,6 +15,7 @@ OUT = Path(os.environ.get("WORK_R5_PROMPT", "/private/tmp/bench_clean/r5_prompt_
 KIMI = os.path.expanduser("~/.kimi-code/bin/kimi")
 MODEL = "kimi-code/k3.1-pro-highspeed"
 SEED = 20261122
+BASE_SYSTEM_TEMPLATE = None
 
 VARIANTS = {
     "V0_stock": "",
@@ -297,9 +298,12 @@ TASKS = {
 }
 
 
-def run_process(cmd, cwd, timeout):
+def run_process(cmd, cwd, timeout, extra_env=None):
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
     proc = subprocess.Popen(
-        cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, start_new_session=True,
     )
     try:
@@ -373,13 +377,19 @@ def count_loc(work, filenames):
 
 
 def run_cell(job, retry_limit=5):
-    variant, task_id, repetition = job
+    variant, task_id, repetition, *effort_parts = job
+    effort = effort_parts[0] if effort_parts else None
     cid = f"{variant}__{task_id}__r{repetition}"
+    if effort:
+        cid += f"__{effort}"
     work = OUT / "work" / cid
     task = TASKS[task_id]
     agent_file = OUT / "agents" / f"{variant}.md"
     agent_file.parent.mkdir(parents=True, exist_ok=True)
-    body = "${base_prompt}"
+    body = BASE_SYSTEM_TEMPLATE or "${base_prompt}"
+    if "__R5_CWD_LISTING__" in body:
+        listing = "\n".join(f"├── {name}" for name in task["files"])
+        body = body.replace("__R5_CWD_LISTING__", listing)
     if VARIANTS[variant].strip():
         body += "\n\n" + VARIANTS[variant].strip()
     agent_file.write_text(f"---\nname: r5-{variant.lower().replace('_', '-')}\ndescription: Round 5 controlled prompt variant\n---\n\n{body}\n")
@@ -398,7 +408,10 @@ def run_cell(job, retry_limit=5):
         for name, content in task["files"].items():
             (work / name).write_text(content)
         started = time.time()
-        rc, stdout, stderr = run_process(cmd, str(work), 180)
+        rc, stdout, stderr = run_process(
+            cmd, str(work), 180,
+            {"KIMI_MODEL_THINKING_EFFORT": effort} if effort else None,
+        )
         elapsed = round(time.time() - started, 2)
         (OUT / "raw" / f"{cid}.attempt{attempt}.stdout.jsonl").write_text(stdout)
         (OUT / "raw" / f"{cid}.attempt{attempt}.stderr.txt").write_text(stderr)
@@ -428,7 +441,8 @@ def run_cell(job, retry_limit=5):
             passed, detail = hidden_test(task, work)
         result = {
             "id": cid, "variant": variant, "task": task_id, "repetition": repetition,
-            "model": MODEL, "rc": rc, "passed": passed, "infra_error": infra_error,
+            "model": MODEL, "thinking_effort": effort or "config_default",
+            "rc": rc, "passed": passed, "infra_error": infra_error,
             "attempts": attempt, "elapsed_s": elapsed, "tool_calls": tool_calls,
             "final_text": final_text, "code_loc": count_loc(work, list(task["files"])),
             "eval_detail": detail, "stderr": stderr[-1000:], "work_dir": str(work),
@@ -530,13 +544,16 @@ def aggregate(results, judgments):
             continue
         passes = sum(r["passed"] for r in rows)
         pass_rate = passes / len(rows)
-        mean_tokens = sum(r["total_tokens"] for r in rows) / len(rows)
+        token_rows = [r for r in rows if r["total_tokens"] > 0]
+        mean_tokens = sum(r["total_tokens"] for r in token_rows) / len(token_rows)
         mean_wall = sum(r["elapsed_s"] for r in rows) / len(rows)
         blind = [scores[r["id"]] for r in rows if scores.get(r["id"]) is not None]
         grouped[variant] = {
-            "runs": len(rows), "passes": passes, "pass_rate": pass_rate,
+            "runs": len(rows), "completed_runs": sum(r["rc"] == 0 for r in rows),
+            "timeouts": sum(r["rc"] == -1 for r in rows), "token_runs": len(token_rows),
+            "passes": passes, "pass_rate": pass_rate,
             "mean_total_tokens": round(mean_tokens, 1),
-            "mean_output_tokens": round(sum(r["output_tokens"] for r in rows) / len(rows), 1),
+            "mean_output_tokens": round(sum(r["output_tokens"] for r in token_rows) / len(token_rows), 1),
             "mean_wall_s": round(mean_wall, 2),
             "mean_code_loc": round(sum(r["code_loc"] for r in rows) / len(rows), 1),
             "mean_tool_calls": round(sum(r["tool_calls"] for r in rows) / len(rows), 1),
