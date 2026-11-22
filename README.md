@@ -6,17 +6,11 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
-## Round 5 Living Prompt Study — V4a Experimental Default
+## Round 5 Real-Task Evaluation — Stock Restored
 
-**Current user-selected experimental prompt:** [`V4a TLDR-Caveman`](prompts/V4a_tldr_caveman.md). V3 remains the published measured baseline while the repeated study completes; V4a is **not yet declared the benchmark winner**.
+**No custom prompt is active globally.** The V4a rollout and subsequent prompt-variant work were stopped because they did not demonstrate better real quality or reasoning efficiency. V3 and the measured variants remain historical artifacts only, not production recommendations.
 
-```text
-CAVEMAN + TLDR + ADHD MODE.
-TLDR answer first. Max 3 fragments. Zero filler/recap.
-Code like caveman: reuse first; min LOC, files, tools, deps; no broad/repeat reads; quiet flags. Keep exact syntax, negations, tests, security, requested format.
-```
-
-The optimization target is **reliable minimalism**: hidden-test and blind quality first, then less code, fewer visible words, fewer reasoning tokens, and less wall time per successful solve. The completed study compared four prompts across four past tasks with three repetitions each, hidden tests, and identity-stripped review.
+The optimization target is **reliable minimalism**: hidden-test and blind quality first, then less code, fewer visible words, fewer reasoning tokens, and less wall time per successful solve. Current evaluation uses the real Arkade brownfield task and its seven deterministic gates with stock Kimi at `low`/`high`/`max` thinking; no new prompt text is being invented or tested.
 
 | Prompt | Hidden passes | Blind /100 | LOC | Est. tokens/pass | Mean wall |
 |---|---:|---:|---:|---:|---:|
@@ -25,9 +19,9 @@ The optimization target is **reliable minimalism**: hidden-test and blind qualit
 | **V4a** | 11/12 | 83.08 | **29.2** | 118,759 | 79.70s |
 | V4b | **12/12** | 85.83 | 34.8 | 116,325 | 84.58s |
 
-Stock led quality and expected tokens/pass; V3 was fastest; V4a produced the least code but did not reduce thought or total tokens. V4a remains an experimental global default, not the measured winner. Full artifacts live in `rounds/round5/`.
+Stock led quality and expected tokens/pass; V3 was fastest; V4a produced the least code but did not reduce thought or total tokens. The V4a global rollout has been reverted. Full artifacts live in `rounds/round5/`.
 
-Next factors are Kimi `low`/`high`/`max` thinking, [`V4c adaptive effort`](prompts/V4c_adaptive_effort.md), and [`V5 clear action contract`](prompts/V5_clear_action_contract.md). Trajectory analysis showed that V4a increased reasoning characters, while DeepSeek repeatedly hunted for unavailable tests; V5 targets that ambiguity with explicit scope/action order and visible smoke checks.
+Current work compares only Kimi `low`/`high`/`max` thinking under stock instructions on the real Arkade task. Trajectory analysis showed that V4a increased reasoning characters, while DeepSeek repeatedly hunted for unavailable tests; fixture clarity, visible checks, and harness isolation are being addressed directly rather than through additional prompt variants.
 
 See the [living research report](research/2026_11_PROMPT_SPEED_LIVING_BENCHMARK.md) and [changelog](CHANGELOG.md) for current evidence, Ultrafast DeepSeek serving results, infrastructure exclusions, and future confirmation rounds.
 

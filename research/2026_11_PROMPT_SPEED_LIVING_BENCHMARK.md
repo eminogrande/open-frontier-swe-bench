@@ -1,20 +1,12 @@
 # Living Prompt, Model-Speed & Reliability Benchmark
 
-**Status:** active. V3 is the published measured baseline. V4a is the user-selected **experimental default**, not yet a measured replacement winner. Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
+**Status:** active real-task evaluation. Stock is the production configuration. Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
 
-## Experimental V4a default
+## Stock restored; prompt-variant work stopped
 
-The current experimental prompt is [`prompts/V4a_tldr_caveman.md`](../prompts/V4a_tldr_caveman.md):
+The V4a rollout was reverted and global `$KIMI_CODE_HOME/AGENTS.md` was removed. V4c/V5/V6 were not benchmarked and have been removed from the active repository. The small-task V4a/V4c thinking matrix was stopped. No new prompt variants will be introduced as recommendations without controlled evidence on real repository tasks.
 
-```text
-CAVEMAN + TLDR + ADHD MODE.
-TLDR answer first. Max 3 fragments. Zero filler/recap.
-Code like caveman: reuse first; min LOC, files, tools, deps; no broad/repeat reads; quiet flags. Keep exact syntax, negations, tests, security, requested format.
-```
-
-V4a is now active in `$KIMI_CODE_HOME/AGENTS.md`; a fresh Kimi session's rendered `profile.bind` system prompt was checked for the exact text. Additive `AGENTS.md` is used rather than a V4a-only `SYSTEM.md` override. Later controlled runs use a preserved pre-rollout system-prompt snapshot so the global rollout cannot contaminate them.
-
-The next candidate, [`V4c adaptive effort`](../prompts/V4c_adaptive_effort.md), preserves the same minimalism but explicitly permits deeper reasoning and iteration when blocked, uncertain, or failing tests. Kimi `low`/`high`/`max` reasoning will be compared separately so prompt text and thinking effort are not confounded. The CLI supports per-process `KIMI_MODEL_THINKING_EFFORT`, so these arms do not require persistent config changes.
+The current independent variable is Kimi reasoning effort (`low`/`high`/`max`) under stock instructions, evaluated on Arkade by [`scripts/run_round5_arkade_stock.py`](../scripts/run_round5_arkade_stock.py). The existing hermetic Round 4 runner accepts an empty system-prompt extension and per-process effort while preserving its default behavior for prior pipelines.
 
 ## Representative confirmation suite
 
@@ -101,9 +93,7 @@ Analysis runner: [`scripts/analyze_round5_trajectories.py`](../scripts/analyze_r
 - **DeepSeek test hunting was concrete:** all three financial runs searched parent directories. One run spent **1,306 reasoning tokens** overall, including a long deliberation about data representation and unavailable tests, before implementing.
 - **Useful thought exists:** Decimal rounding, signature boundaries, validation, and security reasoning should not be optimized away. Pattern counts are review signals, not automatic proof of waste.
 
-The next ablation is [`V5 clear action contract`](../prompts/V5_clear_action_contract.md) plus provided visible smoke checks. It makes the execution order and scope explicit: stay in the working directory, use named files/checks, implement, check, stop, and iterate only on failure or concrete uncertainty. The goal is to remove test hunting and reinterpretation while preserving hidden-test quality.
-
-V5's `reuse existing code` rationale is **untested** and may itself encourage exploration or forced abstractions. [`V6 operational minimalism`](../prompts/V6_operational_minimalism.md) therefore removes CAVEMAN/ADHD/TLDR/persona language and `reuse first` entirely. It retains only operational instructions: correctness first, smallest complete root-cause change, scoped inspection, focused checks, and iteration only after failure or concrete uncertainty. V6 is a candidate, not an activated or measured default.
+These observations are now being tested through **fixture and harness changes**, not more prompt variants: visible smoke checks where appropriate, explicit task contracts, stock instructions, sibling isolation, and independent thinking-effort comparisons. The V5/V6 wording hypotheses were rejected before activation and removed from the active repository.
 
 ## DeepSeek V4.1 Flash 1017 Ultrafast lane
 

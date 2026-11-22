@@ -262,7 +262,7 @@ def run_dsh(provider, model, prompt, cwd, tools=True, timeout=540):
             os.unlink(patch_f.name)
         shutil.rmtree(dsh_home, ignore_errors=True)
 
-def run_kimi_cli(model_alias, prompt, cwd, timeout=540):
+def run_kimi_cli(model_alias, prompt, cwd, timeout=540, system_prompt=V3_SKILL, thinking_effort=None):
     kimi_home = tempfile.mkdtemp(prefix="r4-kimi-home-")
     empty_skills = tempfile.mkdtemp(prefix="r4-kimi-skills-")
     for item in ["config.toml", "credentials", "oauth", "device_id", "region"]:
@@ -272,12 +272,15 @@ def run_kimi_cli(model_alias, prompt, cwd, timeout=540):
     try:
         env = os.environ.copy()
         env["KIMI_CODE_HOME"] = kimi_home
+        if thinking_effort:
+            env["KIMI_MODEL_THINKING_EFFORT"] = thinking_effort
+        full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt.strip() else prompt
         cmd = [
             "/Users/eminmahrt/.kimi-code/bin/kimi",
             "--skills-dir", empty_skills,
             "--model", model_alias,
             "--output-format", "stream-json",
-            "-p", f"{V3_SKILL}\n\n{prompt}"
+            "-p", full_prompt
         ]
         rc, out_s, err_s, elapsed = run_cmd_sandboxed(cmd, cwd, env, timeout, sandbox=True)
         tot_tok = in_tok = out_tok = rsn_tok = steps = tool_calls = 0
