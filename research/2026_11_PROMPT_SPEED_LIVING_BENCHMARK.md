@@ -1,6 +1,6 @@
 # Living Prompt, Model-Speed & Reliability Benchmark
 
-**Status:** Round 6 complete (2026-11-26). **`V6` ([`prompts/V6_human_caveman_minimal.md`](../prompts/V6_human_caveman_minimal.md), 450 chars / ~112 tokens)** is the active global production prompt. Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
+**Status:** Round 7 complete (2026-11-26). **`V8` ([`prompts/V8_telegraphic_adhd.md`](../prompts/V8_telegraphic_adhd.md), 586 chars / ~146 tokens)** is the active global production prompt (superseding `V6`/`V7` after 72-run Round 7 telegraphic bakeoff across 4 labs: `6/6` H2 pass, `-26%` reply words, `-72%` filler hits / `0.0` on Gemini 4, `-87%` router thinking tokens). Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
 
 ## Round 6: 6-Company Frontier Prompt & Overthinking Study (146 valid runs)
 

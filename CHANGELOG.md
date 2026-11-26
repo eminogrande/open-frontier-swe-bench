@@ -4,6 +4,15 @@ All notable benchmark rounds, harness engineering fixes, model catalog audits, a
 
 ---
 
+## [2026-11-26] — Round 7: Telegraphic One-Shot `V8` Winner (72 Runs, 4 Frontier Labs)
+
+### Added
+- **Winning global prompt [`prompts/V8_telegraphic_adhd.md`](prompts/V8_telegraphic_adhd.md)** (`586` chars / `~146` tokens, `P8c_ultra_oneshot`): combines explicit syntactic drops (articles, filler, pronouns, helper verbs, full sentences, bold labels), a structural cap (`Max 3 numbered lines`, tiny numbered table only to compare columns), and a 4-line telegraphic style anchor.
+- **Runner [`scripts/run_round7_telegraphic_bakeoff.py`](scripts/run_round7_telegraphic_bakeoff.py)** + **Round 7 artifacts (`rounds/round7/`)**: `agy_results.jsonl`, `agy_summary.json` (48 runs: `Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen High`, `Claude Sonnet 5.5 High`), `router_results.jsonl`, `router_summary.json` (24 runs: `DeepSeek V4.1 Flash`, `Kimi K3.1 Pro`), and candidate prompts `prompts/round7/P8a..P8c`.
+- **Key findings:** `V8` kept **6/6 (100%)** `H2` coding pass while cutting `agy` reply words **-26%** (`62.2` vs `84.6` V7), cutting article/filler hits **-72%** (`0.5`, **`0.0` on all Gemini 4 runs**), eliminating bold-colon fluff (`0.0`), cutting `agy` robot soup **-37%** (`22.9` vs `36.5`), and cutting router thinking **-87%** (`92` vs `686`) & router total tokens **-32%** (`8,789` vs `13,010`).
+
+---
+
 ## [2026-11-26] — Round 6: 6-Company Frontier Prompt Bakeoff (`V6` / `P5_zero_overthink` Winner)
 
 ### Added

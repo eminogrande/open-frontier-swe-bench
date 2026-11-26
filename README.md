@@ -6,6 +6,33 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
+## Round 7 — Telegraphic Caveman + ADHD Bakeoff (`rounds/round7/`) — `V8` (`P8c_ultra_oneshot`) Wins
+
+**Production recommendation:** [`prompts/V8_telegraphic_adhd.md`](prompts/V8_telegraphic_adhd.md) (**586 chars / ~146 tokens**), verified across **72 runs, 4 frontier labs, and 6 model/effort configs** (`Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen High`, `Claude Sonnet 5.5 High`, `DeepSeek V4.1 Flash`, `Kimi K3.1 Pro`) on `S1` (deploy log), `S2` (rambling chat anti-mirroring), and `H2` (JWT security):
+
+```text
+Ultra-terse caveman ADHD (off on "stop adhd mode"). Drop articles (a/an/the), filler, pronouns, helper verbs, full sentences, bold labels. Never mirror chatty prose. Max 3 numbered lines (`1. 2. 3.`), tiny numbered table only to compare columns.
+Format:
+Fixed: auth timeout.
+1. Pool maxed at 10 (`db.py:18`)
+2. Raised cap to 50; tests 12/12 pass
+Next: deploy staging?
+
+Code: read once, root cause only, reuse stdlib, smallest boring diff, no speculative abstractions. Keep correctness, security, 1 minimal test.
+Batch parallel tools; quiet output; normal prose in docs/commits/warnings.
+```
+
+| Variant | Size | H2 Pass (all 6) | `agy` Words | `agy` Filler Hits | `agy` Bold Fluff | `agy` Soup | Router Think tok | Router Total tok |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `V7` (numbered prose) | 138 tok | 6/6 | 84.6 | 1.8 | 0.4 | 36.5 | 686 | 13,010 |
+| `P8a` (rules only) | 145 tok | 6/6 | 77.0 | 0.9 | 0.0 | 77.4 | 147 | 9,847 |
+| `P8b` (1-shot, no cap) | 136 tok | 6/6 | 94.0 | 1.2 | 0.1 | 100.6 | 146 | 9,414 |
+| **`V8` (`P8c_ultra_oneshot`)** | **146 tok** | **6/6 (100%)** | **62.2 (-26%)** | **0.5 (-72%; 0.0 on Gemini 4)** | **0.0** | **22.9 (-37%)** | **92 (-87%)** | **8,789 (-32%)** |
+
+**Why `V8` works (research-backed):** Combining `Chain-of-Draft` / `Caveman` syntactic drops (no articles/filler/bold labels), a structural cap (`Max 3 numbered lines` — never numeric word caps, which spiked XHigh thinking 7× in Round 6), and a **4-line telegraphic style anchor** breaks RLHF's prose-sentence habit via in-context imitation instead of CoT constraint loops.
+
+---
+
 ## Round 6 — 6-Company Frontier Prompt Bakeoff (`rounds/round6/`) — `V7` (`V6` + Scannable ADHD Shape)
 
 **Production recommendation:** [`prompts/V7_adhd_scannable.md`](prompts/V7_adhd_scannable.md) (**531 chars / ~133 tokens**), built directly on the Round 6 Pareto winner [`V6`](prompts/V6_human_caveman_minimal.md) (146 valid runs, 6 frontier labs, 9 model/effort configs, dual blind judges) and verified on `agy` (`3/3` H2 pass, `42.7s` mean wall — faster than V6 `49.5s`, zero overthinking spike, `Neon` soup `3`) to enforce a strict scannable ADHD layout instead of prose paragraphs:
