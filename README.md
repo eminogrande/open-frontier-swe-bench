@@ -6,6 +6,34 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
+## Round 8 — Zero Code-Pill Human ADHD Bakeoff (`rounds/round8/`) — `V9` (`P9b_exec_caveman`) Wins
+
+**Production recommendation:** [`prompts/V9_adhd_founder.md`](prompts/V9_adhd_founder.md) (**729 chars / ~182 tokens**), verified across **36 runs on `agy`** (`Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen High`, `Claude Sonnet 5.5 High`) reproducing a real Cloudflare incident review (`S3`), deploy status (`S1`), and JWT security coding (`H2`).
+
+**Why `V8` still produced unreadable replies:** `V8`'s own example included `` (`db.py:18`) `` and `;`, teaching models to stuff 20+ gray backtick pills, file links, parentheses, and semicolons into 3-line walls. `V9` eliminates every single one while running **faster** and **cheaper**.
+
+```text
+ADHD founder mode (off on "stop adhd mode"): plain human words, zero jargon, never mirror chatty prose.
+Never put filenames, functions, commit hashes, code backticks, parentheses, or semicolons in chat unless asked. One short line per point, max 3 numbered points (tiny numbered table only to compare columns).
+Example:
+Yes, our update broke login. Already fixed.
+1. Why: new server dropped cookies.
+2. Safe now: new test catches it before deploy.
+3. Leftover: old app needs one reload.
+Next: fix old app or leave it?
+
+Code: read once, fix root cause, reuse stdlib, smallest boring diff, no extra abstractions. Keep correctness, security, 1 minimal test.
+Batch parallel tools; quiet output; normal prose in docs/commits/warnings.
+```
+
+| Variant | Size | H2 Pass | Total tok | Wall | Words | Code Pills | Parens | Semicolons | Clutter Score |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `V8` (previous) | 146 tok | 4/4 | 30,703 | 65.9s | 94.0 | 12.2 | 6.4 | 1.8 | 66.8 |
+| `P9a` (human no-pills) | 190 tok | 4/4 | 31,518 | 65.3s | 96.6 | 0.0 | 0.0 | 0.0 | 11.4 |
+| **`V9` (`P9b_exec_caveman`)** | **182 tok** | **4/4 (100%)** | **28,264 (-8%)** | **61.1s** | **90.6** | **0.0 (-100%)** | **0.0 (-100%)** | **0.0 (-100%)** | **9.4 (-86%)** |
+
+---
+
 ## Round 7 — Telegraphic Caveman + ADHD Bakeoff (`rounds/round7/`) — `V8` (`P8c_ultra_oneshot`) Wins
 
 **Production recommendation:** [`prompts/V8_telegraphic_adhd.md`](prompts/V8_telegraphic_adhd.md) (**586 chars / ~146 tokens**), verified across **72 runs, 4 frontier labs, and 6 model/effort configs** (`Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen High`, `Claude Sonnet 5.5 High`, `DeepSeek V4.1 Flash`, `Kimi K3.1 Pro`) on `S1` (deploy log), `S2` (rambling chat anti-mirroring), and `H2` (JWT security):

@@ -4,6 +4,15 @@ All notable benchmark rounds, harness engineering fixes, model catalog audits, a
 
 ---
 
+## [2026-11-26] — Round 8: Zero Code-Pill Human ADHD `V9` Winner (36 Runs on `agy`)
+
+### Added
+- **Winning global prompt [`prompts/V9_adhd_founder.md`](prompts/V9_adhd_founder.md)** (`729` chars / `~182` tokens, `P9b_exec_caveman`): fixes `V8`'s gray backtick-pill / filename / parenthesis / semicolon cramming by switching to plain human founder speech with a zero-pill, zero-parenthesis, zero-semicolon 4-line example.
+- **Runner [`scripts/run_round8_no_pills_bakeoff.py`](scripts/run_round8_no_pills_bakeoff.py)** + **Round 8 artifacts (`rounds/round8/`)**: `agy_results.jsonl`, `agy_summary.json` (36 runs across `Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen High`, `Claude Sonnet 5.5 High` on real Cloudflare CORS incident review `S3`, `S1`, and `H2`) and candidates `prompts/round8/P9a..P9b`.
+- **Key findings:** `V9` kept **4/4 (100%)** `H2` coding pass while dropping backtick pills `12.2 -> 0.0` (**-100%**), parentheses `6.4 -> 0.0` (**-100%**), semicolons `1.8 -> 0.0` (**-100%**), visual clutter score `66.8 -> 9.4` (**-86%**), total tokens `-8%` (`28,264` vs `30,703`), and wall time `-7%` (`61.1s` vs `65.9s`).
+
+---
+
 ## [2026-11-26] — Round 7: Telegraphic One-Shot `V8` Winner (72 Runs, 4 Frontier Labs)
 
 ### Added

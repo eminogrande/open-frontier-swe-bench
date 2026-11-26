@@ -1,6 +1,6 @@
 # Living Prompt, Model-Speed & Reliability Benchmark
 
-**Status:** Round 7 complete (2026-11-26). **`V8` ([`prompts/V8_telegraphic_adhd.md`](../prompts/V8_telegraphic_adhd.md), 586 chars / ~146 tokens)** is the active global production prompt (superseding `V6`/`V7` after 72-run Round 7 telegraphic bakeoff across 4 labs: `6/6` H2 pass, `-26%` reply words, `-72%` filler hits / `0.0` on Gemini 4, `-87%` router thinking tokens). Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
+**Status:** Round 8 complete (2026-11-26). **`V9` ([`prompts/V9_adhd_founder.md`](../prompts/V9_adhd_founder.md), 729 chars / ~182 tokens)** is the active global production prompt (superseding `V8` after 36-run Round 8 zero-code-pill bakeoff on `agy`: `4/4` H2 pass, backtick pills `12.2 -> 0.0`, parens `6.4 -> 0.0`, semicolons `1.8 -> 0.0`, clutter score `-86%`, total tokens `-8%`, faster wall time). Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
 
 ## Round 6: 6-Company Frontier Prompt & Overthinking Study (146 valid runs)
 
