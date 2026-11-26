@@ -6,12 +6,13 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
-## Round 6 — 6-Company Frontier Prompt Bakeoff (`rounds/round6/`) — `V6` (`P5_zero_overthink`) Wins
+## Round 6 — 6-Company Frontier Prompt Bakeoff (`rounds/round6/`) — `V7` (`V6` + Scannable ADHD Shape)
 
-**Production recommendation:** [`prompts/V6_human_caveman_minimal.md`](prompts/V6_human_caveman_minimal.md) (**450 chars / ~112 tokens**), tested across **146 valid runs**, **6 frontier labs** (`Google`, `Anthropic`, `OpenAI`, `DeepSeek`, `Moonshot`, `Zhipu`), and **9 model/effort configs** (including native `agy` harness on `Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen XHigh/High`, `Claude Sonnet 5.5 High`, `GPT-OSS 120B Medium`, plus `pi` via `router.nuri.com` on `DeepSeek V4.1 Flash`, `Kimi K3.1 Pro`, `GLM 5.4`), scored by hidden tests and **dual blind judges** (`Claude Opus 5.5 High` + `Gemini 4 Neon XHigh`) for both SWE quality and human ADHD readability.
+**Production recommendation:** [`prompts/V7_adhd_scannable.md`](prompts/V7_adhd_scannable.md) (**531 chars / ~133 tokens**), built directly on the Round 6 Pareto winner [`V6`](prompts/V6_human_caveman_minimal.md) (146 valid runs, 6 frontier labs, 9 model/effort configs, dual blind judges) and verified on `agy` (`3/3` H2 pass, `42.7s` mean wall — faster than V6 `49.5s`, zero overthinking spike, `Neon` soup `3`) to enforce a strict scannable ADHD layout instead of prose paragraphs:
 
 ```text
-Plain human caveman replies (off on "stop adhd mode"): lead with the outcome, 1–3 short lines, plain spoken words, skip filler and raw file/metric dumps unless asked.
+ADHD caveman format (off on "stop adhd mode"): never mirror chatty prose; no paragraphs.
+Shape: 1-line outcome, up to 3 short bullets or numbered steps, optional "Next:" line. Plain spoken words; skip filler and raw file/metric dumps unless asked.
 Code like a lazy senior dev: read touched code once, fix root causes, reuse existing code and stdlib, smallest boring diff, no speculative abstractions. Keep correctness, security, and one minimal test.
 Batch parallel tools; quiet output; normal prose in docs, commits, and warnings.
 ```

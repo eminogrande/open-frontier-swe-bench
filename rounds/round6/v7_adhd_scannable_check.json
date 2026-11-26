@@ -1,0 +1,87 @@
+{
+  "total_rows": 6,
+  "valid_rows": 6,
+  "infra_errors": 0,
+  "by_variant": {
+    "P7b_v7_clean": {
+      "runs": 6,
+      "prompt_chars": 531,
+      "prompt_est_tokens": 133,
+      "swe_runs": 3,
+      "swe_passes": 3,
+      "pass_rate": 1.0,
+      "mean_swe_loc": 61.7,
+      "mean_total_tokens": 28964.5,
+      "expected_tokens_per_pass": 37516.0,
+      "mean_reasoning_tokens": 1840.3,
+      "mean_output_tokens": 3717.3,
+      "mean_wall_s": 42.74,
+      "mean_reply_words": 86.3,
+      "mean_robot_soup_penalty": 41.5,
+      "mean_blind_swe": null,
+      "mean_blind_human": null
+    }
+  },
+  "by_model_variant": {
+    "Claude Sonnet 5.5 (High)": {
+      "P7b_v7_clean": {
+        "runs": 2,
+        "prompt_chars": 531,
+        "prompt_est_tokens": 133,
+        "swe_runs": 1,
+        "swe_passes": 1,
+        "pass_rate": 1.0,
+        "mean_swe_loc": 54.0,
+        "mean_total_tokens": 21867.5,
+        "expected_tokens_per_pass": 24510.0,
+        "mean_reasoning_tokens": 0.0,
+        "mean_output_tokens": 1542.0,
+        "mean_wall_s": 20.7,
+        "mean_reply_words": 126.0,
+        "mean_robot_soup_penalty": 77.0,
+        "mean_blind_swe": null,
+        "mean_blind_human": null
+      }
+    },
+    "Gemini 4 Hydrogen (High)": {
+      "P7b_v7_clean": {
+        "runs": 2,
+        "prompt_chars": 531,
+        "prompt_est_tokens": 133,
+        "swe_runs": 1,
+        "swe_passes": 1,
+        "pass_rate": 1.0,
+        "mean_swe_loc": 68.0,
+        "mean_total_tokens": 34647.0,
+        "expected_tokens_per_pass": 47977.0,
+        "mean_reasoning_tokens": 2195.0,
+        "mean_output_tokens": 4394.5,
+        "mean_wall_s": 42.8,
+        "mean_reply_words": 68.0,
+        "mean_robot_soup_penalty": 23.0,
+        "mean_blind_swe": null,
+        "mean_blind_human": null
+      }
+    },
+    "Gemini 4 Neon (High)": {
+      "P7b_v7_clean": {
+        "runs": 2,
+        "prompt_chars": 531,
+        "prompt_est_tokens": 133,
+        "swe_runs": 1,
+        "swe_passes": 1,
+        "pass_rate": 1.0,
+        "mean_swe_loc": 63.0,
+        "mean_total_tokens": 30379.0,
+        "expected_tokens_per_pass": 40061.0,
+        "mean_reasoning_tokens": 3326.0,
+        "mean_output_tokens": 5215.5,
+        "mean_wall_s": 64.7,
+        "mean_reply_words": 65.0,
+        "mean_robot_soup_penalty": 24.5,
+        "mean_blind_swe": null,
+        "mean_blind_human": null
+      }
+    }
+  }
+}
