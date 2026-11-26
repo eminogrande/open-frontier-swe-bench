@@ -4,6 +4,20 @@ All notable benchmark rounds, harness engineering fixes, model catalog audits, a
 
 ---
 
+## [2026-11-26] — Round 6: 6-Company Frontier Prompt Bakeoff (`V6` / `P5_zero_overthink` Winner)
+
+### Added
+- **Winning global prompt [`prompts/V6_human_caveman_minimal.md`](prompts/V6_human_caveman_minimal.md)** (`450` chars / `~112` tokens): combines `i-have-adhd`, `caveman`, and `ponytail` principles without numeric word caps or multi-item ban lists.
+- **Runner [`scripts/run_round6_frontier_prompt_bench.py`](scripts/run_round6_frontier_prompt_bench.py)**: tests `H1` (multi-file Decimal ledger), `H2` (JWT HS256 security), `H3` (new 5-file brownfield webhook broker with SSRF, HMAC, `threading.Barrier` concurrency, retry/DLQ redaction hidden tests), and `S1` (deploy-status human readability task) across `pi` (`router.nuri.com`) and native `agy` CLI with automated `~/.gemini/GEMINI.md` isolation/restore and dual blind judging (`Claude Opus 5.5 High` + `Gemini 4 Neon XHigh`).
+- **Round 6 artifacts (`rounds/round6/`):** `agy_results.jsonl`, `agy_summary.json` (86 valid runs across `Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen XHigh/High`, `Claude Sonnet 5.5 High`, `GPT-OSS 120B Medium`), `router_results.jsonl`, `router_summary.json` (60 valid runs across `DeepSeek V4.1 Flash`, `Kimi K3.1 Pro`, `GLM 5.4`), and `agy_s1_overthink_ablation.json` (30-run `S1` overthinking ablation).
+- **Candidate prompts (`prompts/round6/`):** `P0_stock.md` through `P6_micro.md`.
+
+### Key Findings
+- **`V6` (`P5_zero_overthink`) wins Pareto across 146 valid runs:** **19/21 (90.5%)** combined SWE pass rate (`11/12 = 92%` on `agy`, `8/9 = 89%` on router) vs **15/19 (79%)** stock; cuts thinking tokens **-20% (`agy`) / -38% (router)**; cuts expected tokens/pass **-33% (`agy`) / -69% (router)**; cuts code LOC **-17%**; cuts `agy` robot-soup penalty **-91%** vs stock (`19.6` vs `221.4`) and **-66%** vs V3 (`57.0`), jumping Blind Human score from `23.7` (stock) / `55.1` (V3) to `66.3` (`agy`) and `26.9` to `62.2` (router).
+- **Word-cap overthinking law:** Strict numeric word caps (`<=12 words`) + ban lists (`P2`, `P4`) spiked `XHigh` reasoning tokens **7×** (`3,038–3,272` vs `453` stock) on a simple status reply.
+
+---
+
 ## [2026-11-22] — Living Prompt, Speed & Reliability Benchmark
 
 ### Production decision — stock restored

@@ -4,3 +4,4 @@ node_modules/
 *.sqlite
 .DS_Store
 __pycache__/
+.bench_work/

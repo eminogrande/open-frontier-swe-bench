@@ -1,8 +1,46 @@
 # Living Prompt, Model-Speed & Reliability Benchmark
 
-**Status:** active real-task evaluation. Stock is the production configuration. Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
+**Status:** Round 6 complete (2026-11-26). **`V6` ([`prompts/V6_human_caveman_minimal.md`](../prompts/V6_human_caveman_minimal.md), 450 chars / ~112 tokens)** is the active global production prompt. Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
 
-## Stock restored; prompt-variant work stopped
+## Round 6: 6-Company Frontier Prompt & Overthinking Study (146 valid runs)
+
+Runner: [`scripts/run_round6_frontier_prompt_bench.py`](../scripts/run_round6_frontier_prompt_bench.py). Artifacts: `rounds/round6/`.
+
+- **Models tested (6 companies, 9 configs):**
+  - Native `agy` harness (86 valid runs, 4 transient 503/interrupt infra errors excluded): `Gemini 4 Neon (XHigh)`, `Gemini 4 Neon (High)`, `Gemini 4 Hydrogen (XHigh)`, `Gemini 4 Hydrogen (High)`, `Claude Sonnet 5.5 (High)`, `GPT-OSS 120B (Medium)`.
+  - `pi` via `router.nuri.com/v1/internal` (60 valid runs, 0 infra errors): `DeepSeek V4.1 Flash`, `Kimi K3.1 Pro`, `GLM 5.4`.
+- **Tasks:** `H1` (multi-file Decimal ledger), `H2` (JWT HS256 security), `H3` (5-file brownfield webhook broker: SSRF, HMAC, `threading.Barrier` concurrency, retry/DLQ redaction), and `S1` (deploy-status human readability).
+- **Dual blind judges:** `Claude Opus 5.5 (High)` + `Gemini 4 Neon (XHigh)` grading identity-stripped diffs (`mean_blind_swe`) and status replies (`mean_blind_human`).
+
+### Overthinking discovery (`rounds/round6/agy_s1_overthink_ablation.json`)
+On `S1`, prompts with numeric word caps (`<=12 words each`) and multi-item ban lists (`P2`, `P4`) eliminated robot soup (`0.5–1.7` vs `197.8` stock) but caused **7× more reasoning tokens** (`3,038–3,272` vs `453` stock; peaking at `11,573` on `Gemini 4 Hydrogen XHigh` for a 38-word reply). Removing numeric caps in `P5_zero_overthink` (`V6`) kept human readability high while cutting reasoning tokens below stock.
+
+### Full Round 6 Summary
+
+| Suite | Prompt | Size | SWE Pass | Blind SWE | Blind Human | LOC | Think tok | Exp tok/pass | Wall | Soup |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `agy` (6 models) | `P0_stock` | 0 tok | 8/10 (80%) | 79.7 | 23.7 | 180.1 | 8,794 | 94,100 | 125.3s | 221.4 |
+| `agy` (6 models) | `P1_v3_current` | 121 tok | 10/11 (91%) | **83.1** | 55.1 | **150.6** | **5,131** | **57,161** | **89.9s** | 57.0 |
+| `agy` (6 models) | `P3_ultra_minimal` | 157 tok | 10/12 (83%) | 81.0 | **85.9** | 162.0 | 9,216 | 78,972 | 131.6s | **9.3** |
+| `agy` (6 models) | **`V6` (`P5_zero_overthink`)** | **112 tok** | **11/12 (92%)** | **81.0** | **66.3** | **150.9** | **7,020** | **63,202** | **110.6s** | **19.6** |
+| `agy` (6 models) | `P6_micro` | **65 tok** | 10/11 (91%) | 82.4 | 78.2 | 160.4 | 8,244 | 74,595 | 118.5s | 17.0 |
+| `router` (3 models) | `P0_stock` | 0 tok | 7/9 (78%) | 66.2 | 26.9 | 113.1 | 5,966 | 286,852 | 123.8s | 69.3 |
+| `router` (3 models) | `P1_v3_current` | 121 tok | **9/9 (100%)** | **82.2** | **66.5** | 106.9 | **2,311** | 104,449 | **83.8s** | 19.9 |
+| `router` (3 models) | `P3_ultra_minimal` | 157 tok | 7/9 (78%) | 69.8 | 61.0 | **92.4** | 4,088 | 92,536 | 114.0s | **15.4** |
+| `router` (3 models) | **`V6` (`P5_zero_overthink`)** | **112 tok** | **8/9 (89%)** | **75.1** | **62.2** | **93.4** | **3,708** | **88,822** | **102.2s** | 41.0 |
+| `router` (3 models) | `P6_micro` | **65 tok** | 7/9 (78%) | 65.0 | 59.8 | 96.3 | 3,131 | 151,383 | 117.6s | 21.0 |
+
+### Per-Model `agy` Breakdown (`P0_stock` vs `V6`)
+- `Gemini 4 Neon (High)`: `2/2` pass, thinking `11,053 -> 6,144` (-44%), soup `232.3 -> 9.0` (-96%).
+- `Gemini 4 Neon (XHigh)`: `2/2` pass on `V6`, soup `219.0 -> 9.0` (-96%).
+- `Gemini 4 Hydrogen (High)`: `2/2` pass, thinking `7,509 -> 4,598` (-39%), soup `279.0 -> 8.0` (-97%).
+- `Gemini 4 Hydrogen (XHigh)`: `2/2` pass, thinking `20,342 -> 16,290` (-20%), soup `297.0 -> 12.0` (-96%).
+- `Claude Sonnet 5.5 (High)`: `1/2` pass both, soup `159.7 -> 55.7` (-65%).
+- `GPT-OSS 120B (Medium)`: `0/1 -> 2/2` pass, soup `100.0 -> 24.0` (-76%).
+
+---
+
+## Historical: Round 5 (Stock restored; prompt-variant work stopped)
 
 The V4a rollout was reverted and global `$KIMI_CODE_HOME/AGENTS.md` was removed. V4c/V5/V6 were not benchmarked and have been removed from the active repository. The small-task V4a/V4c thinking matrix was stopped. No new prompt variants will be introduced as recommendations without controlled evidence on real repository tasks.
 

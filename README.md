@@ -6,6 +6,43 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
+## Round 6 — 6-Company Frontier Prompt Bakeoff (`rounds/round6/`) — `V6` (`P5_zero_overthink`) Wins
+
+**Production recommendation:** [`prompts/V6_human_caveman_minimal.md`](prompts/V6_human_caveman_minimal.md) (**450 chars / ~112 tokens**), tested across **146 valid runs**, **6 frontier labs** (`Google`, `Anthropic`, `OpenAI`, `DeepSeek`, `Moonshot`, `Zhipu`), and **9 model/effort configs** (including native `agy` harness on `Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen XHigh/High`, `Claude Sonnet 5.5 High`, `GPT-OSS 120B Medium`, plus `pi` via `router.nuri.com` on `DeepSeek V4.1 Flash`, `Kimi K3.1 Pro`, `GLM 5.4`), scored by hidden tests and **dual blind judges** (`Claude Opus 5.5 High` + `Gemini 4 Neon XHigh`) for both SWE quality and human ADHD readability.
+
+```text
+Plain human caveman replies (off on "stop adhd mode"): lead with the outcome, 1–3 short lines, plain spoken words, skip filler and raw file/metric dumps unless asked.
+Code like a lazy senior dev: read touched code once, fix root causes, reuse existing code and stdlib, smallest boring diff, no speculative abstractions. Keep correctness, security, and one minimal test.
+Batch parallel tools; quiet output; normal prose in docs, commits, and warnings.
+```
+
+### Native `agy` Harness (86 valid runs — Neon/Hydrogen XHigh & High, Sonnet 5.5, GPT-OSS 120B)
+
+| Prompt | Size | SWE Pass | Blind SWE | Blind Human | LOC | Think tok | Exp tok/pass | Wall | Robot Soup |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `P0_stock` | 0 tok | 8/10 (80%) | 79.7 | 23.7 | 180.1 | 8,794 | 94,100 | 125.3s | 221.4 |
+| `P1_v3_current` | 121 tok | 10/11 (91%) | **83.1** | 55.1 | **150.6** | **5,131** | **57,161** | **89.9s** | 57.0 |
+| `P3_ultra_minimal` | 157 tok | 10/12 (83%) | 81.0 | **85.9** | 162.0 | 9,216 | 78,972 | 131.6s | **9.3** |
+| **`V6` (`P5_zero_overthink`)** | **112 tok** | **11/12 (92%)** | **81.0** | **66.3** | **150.9** | **7,020** | **63,202** | **110.6s** | **19.6** |
+| `P6_micro` | **65 tok** | 10/11 (91%) | 82.4 | 78.2 | 160.4 | 8,244 | 74,595 | 118.5s | 17.0 |
+
+### Open-Weights Router (`pi`, 60 valid runs — DeepSeek V4.1, Kimi K3.1 Pro, GLM 5.4)
+
+| Prompt | Size | SWE Pass | Blind SWE | Blind Human | LOC | Think tok | Exp tok/pass | Wall | Robot Soup |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `P0_stock` | 0 tok | 7/9 (78%) | 66.2 | 26.9 | 113.1 | 5,966 | 286,852 | 123.8s | 69.3 |
+| `P1_v3_current` | 121 tok | **9/9 (100%)** | **82.2** | **66.5** | 106.9 | **2,311** | 104,449 | **83.8s** | 19.9 |
+| `P3_ultra_minimal` | 157 tok | 7/9 (78%) | 69.8 | 61.0 | **92.4** | 4,088 | 92,536 | 114.0s | **15.4** |
+| **`V6` (`P5_zero_overthink`)** | **112 tok** | **8/9 (89%)** | **75.1** | **62.2** | **93.4** | **3,708** | **88,822** | **102.2s** | 41.0 |
+| `P6_micro` | **65 tok** | 7/9 (78%) | 65.0 | 59.8 | 96.3 | 3,131 | 151,383 | 117.6s | 21.0 |
+
+**Key findings:**
+- **Zero SWE degradation, highest `agy` pass rate (`92%`):** `V6` (`P5_zero_overthink`) passes **19/21 (90.5%)** combined vs **15/19 (79%)** stock, cuts expected tokens/pass **-33% (`agy`) / -69% (router)**, cuts thinking tokens **-20% (`agy`) / -38% (router)**, and cuts code LOC **-17%**.
+- **Fixes V3's "robot log soup" without overthinking:** Cuts `agy` robot soup **-91%** vs stock (`19.6` vs `221.4`) and **-66%** vs V3 (`57.0`), lifting Blind Human readability from `23.7` (stock) / `55.1` (V3) to `66.3`.
+- **Hard word caps cause 7× overthinking on XHigh:** Early `S1` ablation (`rounds/round6/agy_s1_overthink_ablation.json`) proved numeric word caps (`<=12 words each`) + ban lists (`P2`/`P4`) spiked reasoning tokens **7×** (`3,038–3,272` vs `453` stock — peaking at `11,573` on Hydrogen XHigh for a 38-word reply). Removing numeric caps fixed it.
+
+---
+
 ## Round 5 Real-Task Evaluation — Stock Restored
 
 **No custom prompt is active globally.** The V4a rollout and subsequent prompt-variant work were stopped because they did not demonstrate better real quality or reasoning efficiency. V3 and the measured variants remain historical artifacts only, not production recommendations.
