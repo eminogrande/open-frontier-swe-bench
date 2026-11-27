@@ -1,0 +1,19 @@
+{
+  "V10b_tight_atomic": {
+    "runs": 9,
+    "prompt_chars": 965,
+    "prompt_est_tokens": 241,
+    "h2_pass": "3/3",
+    "mean_think_tok": 7303,
+    "mean_total_tok": 30587,
+    "mean_wall_s": 71.5,
+    "comm_words": 100.8,
+    "comm_num_lines": 4.0,
+    "comm_max_num_w": 21.2,
+    "comm_max_commas": 0.7,
+    "comm_pills": 0.0,
+    "comm_clutter": 8.3,
+    "merged_next_bugs": 0,
+    "has_pick_rate": "6/6"
+  }
+}

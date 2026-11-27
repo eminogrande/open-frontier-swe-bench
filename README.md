@@ -6,6 +6,37 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
+## Round 9 — Atomic Numbered Founder Prompt Bakeoff (`rounds/round9/`) — `V10` (`P10b_tight_atomic`) Wins
+
+**Production recommendation:** [`prompts/V10_atomic_founder.md`](prompts/V10_atomic_founder.md) (**965 chars / ~241 tokens**), verified across **27 runs on `agy`** (`Gemini 4 Hydrogen XHigh`, `Gemini 4 Neon High`, `Claude Sonnet 5.5 High`) on a real 7-edit blogpost update + open founder calls (`S4`), Cloudflare incident review (`S3`), and JWT security coding (`H2`).
+
+**Why `V9` broke on real multi-edit sessions:** `V9`'s `max 3 numbered points` forced models with 7 edits + 2 open calls to cram all 7 edits into one 48-word comma-chained monster bullet, while omitting blank lines caused CommonMark to glue `Next:` onto item 3. Dropping the cap completely (`V10` draft 1) exploded `S3` to 11–12 lines (`173` words). **`V10` (`P10b_tight_atomic`)** hits the exact sweet spot: only surface what matters or needs a call, skip recaps of edits already in a diff/doc, one super-short atomic point per numbered line (usually 3–5 lines or one per open question), recommended `My pick:` on every decision, and blank lines before the list and `Next:`.
+
+```text
+ADHD founder mode (off on "stop adhd mode"): plain human words, zero jargon, never mirror chatty prose.
+Never put filenames, functions, commit hashes, backticks, parentheses, or semicolons in chat unless asked.
+Only surface what matters or needs a call; skip recaps of edits already in a diff or doc. One super short atomic point per numbered line, never chain items with commas, usually 3 to 5 lines or one per open question. Add your pick on open questions. Blank line before list and before Next. Tiny numbered table only to compare columns.
+Example:
+Login fixed and tested. Two calls left:
+
+1. Drop old mobile fallback? My pick: drop.
+2. Email beta users now? My pick: yes.
+3. Ship tonight or review first?
+
+Next: reply like "1 drop, 2 yes, 3 ship".
+
+Code: read once, fix root cause, reuse stdlib, smallest boring diff, no extra abstractions. Keep correctness, security, 1 minimal test.
+Batch parallel tools; quiet output; normal prose in docs/commits/warnings.
+```
+
+| Variant | Size | H2 Pass | Total tok | Comm Words | Mean Lines | Code Pills | `My pick:` Rate |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `V9` (`max 3` cap) | 182 tok | 3/3 | 34,119 | 104.0 | 3.0 (crammed) | 0.0 | 0/6 |
+| `V10a` (unlimited) | 224 tok | 3/3 | 37,708 | 173.0 | 11.3 (bloat) | 0.0 | 6/6 |
+| **`V10` (`P10b_tight_atomic`)** | **241 tok** | **3/3 (100%)** | **30,587 (-10%)** | **100.8 (64w on S4 XHigh)** | **4.0** | **0.0** | **6/6 (100%)** |
+
+---
+
 ## Round 8 — Zero Code-Pill Human ADHD Bakeoff (`rounds/round8/`) — `V9` (`P9b_exec_caveman`) Wins
 
 **Production recommendation:** [`prompts/V9_adhd_founder.md`](prompts/V9_adhd_founder.md) (**729 chars / ~182 tokens**), verified across **36 runs on `agy`** (`Gemini 4 Neon XHigh/High`, `Gemini 4 Hydrogen High`, `Claude Sonnet 5.5 High`) reproducing a real Cloudflare incident review (`S3`), deploy status (`S1`), and JWT security coding (`H2`).

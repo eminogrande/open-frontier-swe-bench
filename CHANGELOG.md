@@ -4,6 +4,15 @@ All notable benchmark rounds, harness engineering fixes, model catalog audits, a
 
 ---
 
+## [2026-11-27] — Round 9: Atomic Numbered `V10` Winner (27 Runs on `agy`)
+
+### Added
+- **Winning global prompt [`prompts/V10_atomic_founder.md`](prompts/V10_atomic_founder.md)** (`965` chars / `~241` tokens, `P10b_tight_atomic`): fixes `V9`'s `max 3` comma-chain stuffing (discovered in real session `9330b5f6` where 7 edits collapsed into one 48-word bullet and `Next:` glued onto line 3) without `V10a`'s 11-line bloat.
+- **Runner [`scripts/run_round9_atomic_bakeoff.py`](scripts/run_round9_atomic_bakeoff.py)** + **Round 9 artifacts (`rounds/round9/`)**: `v9_vs_v10a_results.jsonl`, `v9_vs_v10a_summary.json`, `v10b_results.jsonl`, `v10b_summary.json` (27 runs across `Gemini 4 Hydrogen XHigh`, `Gemini 4 Neon High`, `Claude Sonnet 5.5 High` on `S4` blogpost update, `S3` Cloudflare review, and `H2` JWT security).
+- **Key findings:** `V10` (`P10b`) kept **3/3 (100%)** `H2` pass, **0.0** code pills, **0** merged `Next:` bugs, **6/6 (100%)** `My pick:` recommendations, cut total tokens **-10%** vs `V9` (`30,587` vs `34,119`), and cut `Hydrogen XHigh` `S4` reply length from `111w` (with 36w recap paragraph) to `64w` (`0` commas).
+
+---
+
 ## [2026-11-26] — Round 8: Zero Code-Pill Human ADHD `V9` Winner (36 Runs on `agy`)
 
 ### Added

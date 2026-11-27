@@ -1,6 +1,6 @@
 # Living Prompt, Model-Speed & Reliability Benchmark
 
-**Status:** Round 8 complete (2026-11-26). **`V9` ([`prompts/V9_adhd_founder.md`](../prompts/V9_adhd_founder.md), 729 chars / ~182 tokens)** is the active global production prompt (superseding `V8` after 36-run Round 8 zero-code-pill bakeoff on `agy`: `4/4` H2 pass, backtick pills `12.2 -> 0.0`, parens `6.4 -> 0.0`, semicolons `1.8 -> 0.0`, clutter score `-86%`, total tokens `-8%`, faster wall time). Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
+**Status:** Round 9 complete (2026-11-27). **`V10` ([`prompts/V10_atomic_founder.md`](../prompts/V10_atomic_founder.md), 965 chars / ~241 tokens)** is the active global production prompt (superseding `V9` after 27-run Round 9 atomic bakeoff on `agy`: `3/3` H2 pass, `0.0` code pills, `6/6` `My pick:` recommendations, `-10%` total tokens vs `V9`, eliminates `max 3` comma-chained bullets and `V10a`'s 11-line bloat). Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
 
 ## Round 6: 6-Company Frontier Prompt & Overthinking Study (146 valid runs)
 
