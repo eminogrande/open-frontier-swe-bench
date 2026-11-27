@@ -1,6 +1,6 @@
 # Living Prompt, Model-Speed & Reliability Benchmark
 
-**Status:** Round 9 complete (2026-11-27). **`V10` ([`prompts/V10_atomic_founder.md`](../prompts/V10_atomic_founder.md), 965 chars / ~241 tokens)** is the active global production prompt (superseding `V9` after 27-run Round 9 atomic bakeoff on `agy`: `3/3` H2 pass, `0.0` code pills, `6/6` `My pick:` recommendations, `-10%` total tokens vs `V9`, eliminates `max 3` comma-chained bullets and `V10a`'s 11-line bloat). Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
+**Status:** Round 10 complete (2026-11-27). **`V11` ([`prompts/V11_caveman_visual.md`](../prompts/V11_caveman_visual.md), 1,158 chars / ~289 tokens)** is the active global production prompt (superseding `V10` after Round 10 verification on `agy`: `3/3` H2 pass, `6/6` clean numbered tables, `0` articles/filler on all Gemini 4 comm replies, `0.0` code pills/parens/semicolons, bold visual anchors). Update this report and [`CHANGELOG.md`](../CHANGELOG.md) together when a measured round lands.
 
 ## Round 6: 6-Company Frontier Prompt & Overthinking Study (146 valid runs)
 

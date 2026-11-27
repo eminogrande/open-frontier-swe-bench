@@ -1,0 +1,17 @@
+{
+  "V11_caveman_visual": {
+    "runs": 9,
+    "prompt_chars": 1140,
+    "prompt_est_tokens": 285,
+    "h2_pass": "3/3",
+    "mean_think_tok": 7568,
+    "mean_total_tok": 34364,
+    "mean_wall_s": 70.7,
+    "comm_words": 142.5,
+    "comm_filler_hits": 4.8,
+    "comm_pills": 0.0,
+    "comm_parens": 0.0,
+    "comm_semis": 0.0,
+    "comm_tables": "6/6"
+  }
+}

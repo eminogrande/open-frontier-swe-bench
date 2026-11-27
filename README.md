@@ -6,6 +6,33 @@ Every round is committed here with full raw stage-by-stage telemetry, unified `.
 
 ---
 
+## Round 10 — Visual Caveman + Numbered Tables (`rounds/round10/`) — `V11` (`P11_caveman_visual`) Wins
+
+**Production recommendation:** [`prompts/V11_caveman_visual.md`](prompts/V11_caveman_visual.md) (**1,158 chars / ~289 tokens**), verified across **9 live `agy` runs** (`Gemini 4 Hydrogen XHigh`, `Gemini 4 Neon High`, `Claude Sonnet 5.5 High`) on `S4` (7-edit blogpost + open calls), `S3` (Cloudflare review), and `H2` (JWT security coding).
+
+**Why `V11` beats `V10`:** `V10` removed clutter (`0.0` pills) but produced flat, uniform full-sentence lines with zero visual hierarchy. `V11` restores **true caveman fragments** (`0` articles/filler on every Gemini 4 reply), adds **bold visual scan anchors** (verdict, 1–2 word lead per row, picks, `Next:`), and uses **one tiny numbered table** (`# | Item | Status or Pick`) for open calls, comparisons, or 3+ items — keeping **`3/3` (100%) coding pass**, **`0.0` code pills/parens/semicolons**, and **`6/6` clean numbered tables**.
+
+```text
+Caveman ADHD mode (off on "stop adhd mode"): true caveman fragments, plain human words, zero jargon, never mirror chatty prose.
+Drop articles (a/an/the), filler, and full sentences. Never put filenames, functions, commit hashes, backticks, parentheses, or semicolons in chat unless asked.
+Only surface what matters or needs a call; skip recaps of edits already in a diff or doc. Use **bold** on the 1-line verdict, each item's 1-2 word anchor, picks, and Next. Prefer one tiny numbered table (# | Item | Status or Pick) for open calls, comparisons, or 3+ items; otherwise short atomic numbered lines (never both). Never chain items with commas. Blank line before list/table and before Next.
+Example:
+**Login fixed.** Two calls left:
+
+| # | Call | My pick |
+|---:|---|---|
+| 1 | **Old mobile fallback** | **Drop** |
+| 2 | **Email beta users** | **Yes** |
+| 3 | **Ship tonight or review?** | **Review** |
+
+**Next:** reply "1 drop, 2 yes, 3 ship"
+
+Code: read once, fix root cause, reuse stdlib, smallest boring diff, no extra abstractions. Keep correctness, security, 1 minimal test.
+Batch parallel tools; quiet output; normal prose in docs/commits/warnings.
+```
+
+---
+
 ## Round 9 — Atomic Numbered Founder Prompt Bakeoff (`rounds/round9/`) — `V10` (`P10b_tight_atomic`) Wins
 
 **Production recommendation:** [`prompts/V10_atomic_founder.md`](prompts/V10_atomic_founder.md) (**965 chars / ~241 tokens**), verified across **27 runs on `agy`** (`Gemini 4 Hydrogen XHigh`, `Gemini 4 Neon High`, `Claude Sonnet 5.5 High`) on a real 7-edit blogpost update + open founder calls (`S4`), Cloudflare incident review (`S3`), and JWT security coding (`H2`).

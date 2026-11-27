@@ -4,6 +4,14 @@ All notable benchmark rounds, harness engineering fixes, model catalog audits, a
 
 ---
 
+## [2026-11-27] — Round 10: Visual Caveman + Numbered Tables `V11` Winner (`rounds/round10/`)
+
+### Added
+- **Winning global prompt [`prompts/V11_caveman_visual.md`](prompts/V11_caveman_visual.md)** (`1,158` chars / `~289` tokens): restores true caveman fragments (`0` article/filler hits across all Gemini 4 comm replies), adds bold visual anchors (verdict, 1–2 word item anchor, picks, `Next:`), and uses one tiny numbered table (`# | Item | Status or Pick`) for open calls, comparisons, or 3+ items while keeping `0.0` code pills, parentheses, and semicolons.
+- **Round 10 artifacts (`rounds/round10/`):** `v11_results.jsonl`, `v11_summary.json`, and `prompts/round10/P11_caveman_visual.md` (`3/3` H2 pass, `6/6` numbered tables, `0.0` pills/parens/semicolons, `79w` Neon High S4 at `39.8s`).
+
+---
+
 ## [2026-11-27] — Round 9: Atomic Numbered `V10` Winner (27 Runs on `agy`)
 
 ### Added
